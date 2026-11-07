@@ -30,6 +30,19 @@ import sys
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+def safe_user_path(path_value, base_dir="."):
+    """Resolve a CLI path under the current workspace."""
+    if base_dir != ".":
+        raise ValueError("Custom base directories are not supported for CLI paths")
+    base_path = Path.cwd().resolve()
+    resolved_path = Path(path_value).expanduser().resolve()
+    try:
+        resolved_path.relative_to(base_path)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes allowed directory: {path_value}") from exc
+    return resolved_path
 from typing import Any
 
 
@@ -60,12 +73,12 @@ def load_records(path: Path) -> list[dict[str, Any]]:
             if not line:
                 continue
             try:
-                records.append(json.loads(line))
-            except json.JSONDecodeError as exc:
-                print(
-                    f"warning: skipping malformed line {lineno}: {exc}",
-                    file=sys.stderr,
-                )
+                rec = json.loads(line)
+                if not isinstance(rec, dict):
+                    raise ValueError(f"line {lineno}: expected JSON object")
+                records.append(rec)
+            except (json.JSONDecodeError, ValueError) as exc:
+                raise ValueError(f"malformed input at line {lineno}: {exc}") from exc
     return records
 
 
@@ -87,7 +100,7 @@ def render_findings(findings: list[dict[str, Any]]) -> str:
     older schemas or hand-rolled fixtures.
     """
     if not findings:
-        return "## Findings\n\nNo exposure-catalog matches.\n"
+        return "## Findings\n\nNo finding records in the supplied output. Catalog availability and scan completeness must be verified separately.\n"
 
     # Sort by severity (critical first) then by package name.
     sorted_findings = sorted(
@@ -339,8 +352,8 @@ def main(argv: list[str]) -> int:
         print(f"usage: {Path(argv[0]).name} <input.ndjson> <output.md>", file=sys.stderr)
         return 1
 
-    input_path = Path(argv[1])
-    output_path = Path(argv[2])
+    input_path = safe_user_path(argv[1])
+    output_path = safe_user_path(argv[2])
 
     if not input_path.exists() or input_path.stat().st_size == 0:
         print(f"error: {input_path} is missing or empty", file=sys.stderr)
@@ -351,9 +364,13 @@ def main(argv: list[str]) -> int:
         print("error: no JSON records parsed from input", file=sys.stderr)
         return 3
 
+    if not any(r.get("record_type", r.get("type")) == "scan_summary" for r in records):
+        print("error: missing scan_summary; retain raw evidence as incomplete", file=sys.stderr)
+        return 4
     report = build_report(records, input_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(report, encoding="utf-8")
+    with output_path.open("x", encoding="utf-8") as fh:
+        fh.write(report)
     print(f"wrote {output_path} ({len(records)} records)")
     return 0
 

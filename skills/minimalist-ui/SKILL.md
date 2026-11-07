@@ -19,6 +19,12 @@ tools: [claude, cursor, codex, antigravity]
 - Use when designing warm monochrome interfaces with crisp borders, generous whitespace, muted pastel accents, and quiet motion.
 - Use when the task should avoid gradients, heavy shadows, saturated colors, pill-heavy components, and generic SaaS visuals.
 
+## Example
+
+**User request:**
+
+> Review this interface with @minimalist-ui, identify the highest-impact design problems, and propose an implementation-ready improvement.
+
 ## Limitations
 
 - Minimalism can hide hierarchy when content is dense; validate scannability, contrast, and navigation clarity with real content.
@@ -94,6 +100,10 @@ Motion should feel invisible — present but never distracting. The goal is quie
 - Staggered Reveals: Lists and grid items enter with a cascade delay (`animation-delay: calc(var(--index) * 80ms)`). Never mount everything at once.
 - Background Ambient Motion: Optional. A single, very slow-moving radial gradient blob (`animation-duration: 20s+`, `opacity: 0.02-0.04`) drifting behind hero sections. Must be applied to a `position: fixed; pointer-events: none` layer. Never on scrolling containers.
 - Performance: Animate exclusively via `transform` and `opacity`. No layout-triggering properties (`top`, `left`, `width`, `height`). Use `will-change: transform` sparingly and only on actively animating elements.
+
+## Accessibility and content constraints
+
+Keep content visible when scripts/observers fail and provide a no-motion path for `prefers-reduced-motion`. Validate actual text/background contrast, focus indicators, semantic order and zoom with real content; pale borders alone cannot identify controls. Use authentic licensed assets or explicitly labeled placeholders—do not invent testimonials/customer identities to appear realistic. Existing user/brand/accessibility requirements supersede aesthetic bans.
 
 ## 8. Execution Protocol
 When tasked with writing frontend code (HTML, React, Tailwind, Vue) or designing a layout:

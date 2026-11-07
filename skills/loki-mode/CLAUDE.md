@@ -1,12 +1,12 @@
 # Loki Mode - Claude Code Skill
 
-Multi-agent autonomous startup system for Claude Code. Takes PRD to fully deployed, revenue-generating product with zero human intervention.
+Experimental multi-agent project workflow for Claude Code. Generated work requires verification; deployment, spending, communications, credentials, and other external actions require explicit user authorization. Revenue and unattended completion are not established.
 
 ## Quick Start
 
 ```bash
 # Launch Claude Code with autonomous permissions
-claude --dangerously-skip-permissions
+claude
 
 # Then invoke:
 # "Loki Mode" or "Loki Mode with PRD at path/to/prd"

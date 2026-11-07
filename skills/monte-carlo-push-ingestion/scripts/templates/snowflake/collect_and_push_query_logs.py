@@ -17,17 +17,15 @@ Substitution points
 
 Prerequisites
 -------------
-    pip install pycarlo snowflake-connector-python
+    python -m pip install pycarlo==0.15.491 snowflake-connector-python
 
 Usage
 -----
     python collect_and_push_query_logs.py \\
         --account  <SNOWFLAKE_ACCOUNT> \\
         --user     <SNOWFLAKE_USER> \\
-        --password <SNOWFLAKE_PASSWORD> \\
         --warehouse <SNOWFLAKE_WAREHOUSE> \\
         --key-id  <MCD_INGEST_ID> \\
-        --key-token <MCD_INGEST_TOKEN> \\
         --resource-uuid <MCD_RESOURCE_UUID>
 """
 
@@ -36,6 +34,7 @@ import os
 
 from collect_query_logs import collect
 from push_query_logs import push, _BATCH_SIZE
+from _safe_paths import safe_output_json_path
 
 
 def main() -> None:
@@ -53,7 +52,7 @@ def main() -> None:
         help="Snowflake username (env: SNOWFLAKE_USER)",
     )
     parser.add_argument(
-        "--password",
+        "--password", choices=[],
         default=os.environ.get("SNOWFLAKE_PASSWORD"),
         help="Snowflake password (env: SNOWFLAKE_PASSWORD)",
     )
@@ -68,7 +67,7 @@ def main() -> None:
         help="Monte Carlo ingestion key ID (env: MCD_INGEST_ID)",
     )
     parser.add_argument(
-        "--key-token",
+        "--key-token", choices=[],
         default=os.environ.get("MCD_INGEST_TOKEN"),
         help="Monte Carlo ingestion key token (env: MCD_INGEST_TOKEN)",
     )
@@ -111,23 +110,26 @@ def main() -> None:
     if missing:
         parser.error(f"Missing required arguments: {', '.join(missing)}")
 
+    output_path = str(safe_output_json_path(args.output_file))
+    push_result_path = str(safe_output_json_path(args.push_result_file))
+
     # Step 1: Collect
     collect(
         account=args.account,
         user=args.user,
         password=args.password,
         warehouse=args.warehouse,
-        output_file=args.output_file,
+        output_file=output_path,
     )
 
     # Step 2: Push
     push(
-        input_file=args.output_file,
+        input_file=output_path,
         resource_uuid=args.resource_uuid,
         key_id=args.key_id,
         key_token=args.key_token,
         batch_size=args.batch_size,
-        output_file=args.push_result_file,
+        output_file=push_result_path,
     )
 
     print("Done.")

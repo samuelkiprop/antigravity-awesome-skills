@@ -1,55 +1,16 @@
-# Merge Batch
+# Protected merge batches
 
-`merge:batch` is the maintainer shortcut for merging multiple PRs in order while keeping the GitHub-only squash rule and the post-merge contributor sync.
+`merge:batch` is the sole implementation allowed to approve fork runs or merge; the guided `maintenance:cycle merge` delegates to it. Read the [maintenance contract](maintenance-contract.md) before execution.
 
-## Prerequisites
+Review entire `skills/<skill-id>/**` trees, including support files and provenance. A passing Tessl review or exact-head maintainer attestation is required. Safe unprivileged analysis can start before review; owner-sensitive code retains the owner/exact-head gate. The helper does not rewrite PR metadata and does not retry base drift automatically.
 
-- Start from a clean `main`.
-- Make sure [`.github/MAINTENANCE.md`](../../.github/MAINTENANCE.md) is the governing policy.
-- Have `gh` authenticated with maintainer permissions.
-- Use this only for PRs that are already expected to merge; conflicting PRs still need the manual conflict playbook.
+The protected reviewed-fork ledger may opt in to exact `skills/<skill-id>/resources/scripts/*.py` files for a complete reviewed tree. These helpers remain inert regular files (`100644`); executable modes, symlinks, arbitrary extensions and other resource paths stay blocked. The general fork policy is unchanged.
 
-## Basic Usage
-
-```bash
-npm run merge:batch -- --prs 450,449,446,451
+```sh
+npm run merge:batch -- --prs 123,124 --prepare-only
+npm run merge:batch -- --prs 123,124 --state-dir /absolute/private/state --reviewed-head FULL_SHA --reviewer maintainer --review-evidence 'Full bundle inspected'
 ```
 
-Add `--poll-seconds <n>` if you want a slower or faster status loop while checks settle.
+Create the external state directory with mode 0700 first. Receipts bind complete skill trees, policy and dependency context. Authenticated identical-content reuse authorizes only the current full head after fresh required checks. A changed bundle or evaluator invalidates reuse. Journal state never counts as review or a green check. Already merged PRs are verified against protected main; blocked PRs are recorded while independent ones continue.
 
-## Happy Path
-
-`merge:batch` will:
-
-- refresh the PR body when the Quality Bar checklist is missing
-- close and reopen the PR if stale metadata needs a fresh `pull_request` event
-- approve fork runs waiting on `action_required`
-- wait for the fresh required checks on the current head SHA
-- merge with GitHub squash merge
-- pull `main`, run `sync:contributors`, and push a README-only follow-up if needed
-
-## What It Automates
-
-- PR body normalization against the repository template
-- stale PR metadata refresh
-- required-check polling for the current PR head
-- the post-merge contributor sync step
-- the retry loop for `Base branch was modified`
-
-## What It Does Not Automate
-
-- conflict resolution on the PR branch
-- manual judgment for risky skill changes
-- README community-source audits when the source metadata is ambiguous
-- fork-only edge cases that require contributor coordination outside GitHub permissions
-
-## When To Stop
-
-Stop and switch to the manual playbook when:
-
-- the PR is `CONFLICTING`
-- `merge:batch` reports a check failure that needs source changes, not maintainer automation
-- the PR needs a manual README credits decision
-- fork approval or branch permissions are missing
-
-In those cases, follow [Merging Pull Requests](merging-prs.md) and the relevant sections in [MAINTENANCE.md](../../.github/MAINTENANCE.md).
+Source merges defer generated distribution snapshots to the next release PR. Main CI validates temporary generated state without opening a canonical-sync PR.

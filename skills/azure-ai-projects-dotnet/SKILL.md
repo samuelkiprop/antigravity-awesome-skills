@@ -1,7 +1,7 @@
 ---
 name: azure-ai-projects-dotnet
 description: Azure AI Projects SDK for .NET. High-level client for Azure AI Foundry projects including agents, connections, datasets, deployments, evaluations, and indexes.
-risk: unknown
+risk: critical
 source: community
 date_added: '2026-02-27'
 ---
@@ -63,6 +63,8 @@ AIProjectClient
 ```
 
 ## Core Workflows
+
+The snippets span GA/preview surfaces; pin compatible package versions and verify signatures in the linked SDK samples before combining them. Confirm project endpoint, tenant, deployment, budget and permitted uploaded data. Agent runs/evaluations may bill or call external tools. Add cancellation/deadline to every poll, distinguish Completed from Failed/Cancelled/RequiresAction, and inspect output only after successful completion. Cleanup deletes only resources created by this run; use finally blocks after preserving needed evidence, never delete user-owned resources merely because a sample ends.
 
 ### 1. Get Persistent Agents Client
 
@@ -151,7 +153,7 @@ foreach (AIProjectConnection connection in projectClient.Connections.GetConnecti
 // Get specific connection
 AIProjectConnection conn = projectClient.Connections.GetConnection(
     connectionName, 
-    includeCredentials: true);
+    includeCredentials: false);
 
 // Get default connection
 AIProjectConnection defaultConn = projectClient.Connections.GetDefaultConnection(

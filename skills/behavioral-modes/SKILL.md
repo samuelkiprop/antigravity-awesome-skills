@@ -1,7 +1,7 @@
 ---
 name: behavioral-modes
 description: "AI operational modes (brainstorm, implement, debug, review, teach, ship, orchestrate). Use to adapt behavior based on task type."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -12,6 +12,8 @@ date_added: "2026-02-27"
 This skill defines distinct behavioral modes that optimize AI performance for specific tasks. Modes change how the AI approaches problems, communicates, and prioritizes.
 
 ---
+
+Modes are communication/workflow preferences, not client capability switches or new permissions. Respect the user's requested scope and repository rules in every mode. Ship/orchestrate labels do not authorize publication, deployment or new agents, and terse implementation output must still report actual checks, failures and limitations. Named slash commands/roles work only if the host supports them.
 
 ## Available Modes
 

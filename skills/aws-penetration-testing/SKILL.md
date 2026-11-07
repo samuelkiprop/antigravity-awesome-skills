@@ -7,6 +7,20 @@ author: zebbern
 date_added: "2026-02-27"
 ---
 
+> **⚠️ AUTHORIZED USE ONLY**
+> This skill is for educational purposes or authorized security assessments only.
+> You must have explicit, written permission from the system owner before using this tool.
+> Misuse of this tool is illegal and strictly prohibited.
+
+> **Mandatory confirmation gate**
+> Before running any command that probes, exploits, changes, persists on, extracts data from, or attempts credential access against a target:
+> 1. Ask the user to state the exact target URL, IP, account, or resource.
+> 2. Ask the user to confirm written authorization and the permitted scope.
+> 3. Show the exact command(s) and explain their expected effect.
+> 4. Wait for explicit confirmation in the current conversation.
+>
+> Without that confirmation, remain read-only and provide defensive guidance only. Prefer a sandbox, disposable VM, or controlled lab.
+
 > AUTHORIZED USE ONLY: Use this skill only for authorized security assessments, defensive validation, or controlled educational environments.
 
 # AWS Penetration Testing
@@ -83,7 +97,8 @@ aws iam list-user-policies --user-name TARGET_USER
 
 # Get policy details
 aws iam get-policy --policy-arn POLICY_ARN
-aws iam get-policy-version --policy-arn POLICY_ARN --version-id v1
+# Resolve DefaultVersionId from get-policy; v1 may not be the effective version.
+aws iam get-policy-version --policy-arn POLICY_ARN --version-id DEFAULT_VERSION_ID
 
 # List roles
 aws iam list-roles
@@ -142,7 +157,7 @@ http://169.254.170.2/v2/credentials/CREDENTIAL-PATH
 
 ### Shadow Admin Permissions
 
-These permissions are equivalent to administrator:
+These permissions can enable escalation only when their allowed resources, conditions and effective policies permit the chain. They are not inherently administrator-equivalent:
 
 | Permission | Exploitation |
 |------------|--------------|
@@ -314,9 +329,9 @@ aws_consoler -v -a AKIAXXXXXXXX -s SECRETKEY
 
 ---
 
-## Covering Tracks
+## Logging-control validation in a disposable lab
 
-### Disable CloudTrail
+### Preserve audit evidence
 
 ```bash
 # Delete trail
@@ -331,7 +346,7 @@ aws cloudtrail update-trail --name trail_name \
   --no-include-global-service-events --no-is-multi-region-trail
 ```
 
-**Note:** Kali/Parrot/Pentoo Linux triggers GuardDuty alerts based on user-agent. Use Pacu which modifies the user-agent.
+Do not change user agents or disable logging to evade detection. A user agent alone does not establish whether GuardDuty alerts will fire; validate detections with the monitoring owner. The commands above are destructive configuration examples for a separately approved disposable lab, not cleanup steps.
 
 ---
 
@@ -397,9 +412,9 @@ aws sts get-caller-identity
 |-------|----------|
 | Access Denied on all commands | Enumerate permissions with enumerate-iam |
 | Metadata endpoint blocked | Check for IMDSv2, try container metadata |
-| GuardDuty alerts | Use Pacu with custom user-agent |
+| GuardDuty alerts | Coordinate expected test alerts and preserve evidence with the monitoring owner |
 | Expired credentials | Re-fetch from metadata (temp creds rotate) |
-| CloudTrail logging actions | Consider disable or log obfuscation |
+| CloudTrail logging actions | Preserve logging and review test events with the monitoring owner |
 
 ---
 
@@ -409,3 +424,9 @@ For advanced techniques including Lambda/API Gateway exploitation, Secrets Manag
 
 ## When to Use
 This skill is applicable to execute the workflow or actions described in the overview.
+
+## Effective-access and evidence limits
+
+Inventory commands are not proof of exploitability. Account for explicit denies, SCPs/RCPs, boundaries, session policies, resource policies, conditions and service prerequisites. Updating Lambda code uses its execution role only when the code is actually invoked; `iam:PassRole` needs a compatible trusted service and a usable role. IMDSv2 requires the SSRF primitive to support the token PUT and required headers; the local curl example does not establish a remote bypass. A role name such as AdminRole proves no permission level.
+
+Use named short-lived profiles or approved credential providers. Do not pass secrets as command-line arguments, retain real keys in shell history, dump all bucket/table data by default or upload artifacts to a different account. Prefer owner-created canary objects and bounded listings. Snapshot/volume creation, invocation, image pushes, credential creation and policy changes have cost and state effects; record exact resources and approved rollback. Mount only a disposable copy with filesystem-specific read-only/no-recovery precautions. Preserve CloudTrail and evidence throughout. Tool names and CLI fragments are leads, not a tested interoperable toolchain; no assessment was run.

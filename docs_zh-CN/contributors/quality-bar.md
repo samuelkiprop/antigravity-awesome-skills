@@ -1,6 +1,8 @@
+> 当前贡献流程和检查要求以英文源为准。 [Current canonical source](../../docs/contributors/quality-bar.md)
+
 # 🏆 质量标准与验证标准
 
-要将 **Antigravity Awesome Skills** 从脚本集合转变为可信平台，每个技能都必须达到特定的质量和安全标准。
+要将 **Agentic Awesome Skills** 从脚本集合转变为可信平台，每个技能都必须达到特定的质量和安全标准。
 
 ## "Validated" 徽章 ✅
 
@@ -27,6 +29,7 @@
 
 每个技能必须声明其风险级别：
 
+- ⚪ **unknown**：遗留或未分类内容。新技能应避免使用，除非确实需要维护者分流。
 - 🟢 **none**：纯文本/推理（例如：头脑风暴）
 - 🔵 **safe**：读取文件、运行安全命令（例如：代码检查器）
 - 🟠 **critical**：修改状态、删除文件、推送到生产环境（例如：Git 推送）

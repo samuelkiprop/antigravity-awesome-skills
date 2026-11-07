@@ -1,7 +1,7 @@
 ---
 name: popup-cro
 description: "Create and optimize popups, modals, overlays, slide-ins, and banners to increase conversions without harming user experience or brand trust."
-risk: unknown
+risk: none
 source: community
 date_added: "2026-02-27"
 ---
@@ -86,7 +86,7 @@ Multiple CTAs or mixed goals destroy performance.
 ### Exit Intent
 
 * Desktop: Cursor movement toward browser UI
-* Mobile: Back button / upward scroll
+* Mobile: Use only non-interfering engagement signals; never hijack browser Back navigation or trap users trying to leave.
 * Best for: E-commerce, lead recovery
 
 ### Click-Triggered (Highest Intent)
@@ -255,7 +255,7 @@ Multiple CTAs or mixed goals destroy performance.
 ### Accessibility
 
 * Keyboard navigable
-* Focus trapped while open
+* Trap focus only for a modal dialog, restore it to the invoker on close, and keep non-modal banners/slide-ins from trapping focus.
 * Screen-reader compatible
 * Sufficient contrast
 
@@ -350,6 +350,12 @@ Multiple CTAs or mixed goals destroy performance.
 
 ## When to Use
 This skill is applicable to execute the workflow or actions described in the overview.
+
+## Example
+
+**User request:**
+
+> Create and optimize popups, modals, overlays, slide-ins, and banners to increase conversions without harming user experience or brand trust.
 
 ## Limitations
 - Use this skill only when the task clearly matches the scope described above.

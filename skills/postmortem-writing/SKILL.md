@@ -1,7 +1,7 @@
 ---
 name: postmortem-writing
 description: "Comprehensive guide to writing effective, blameless postmortems that drive organizational learning and prevent incident recurrence."
-risk: unknown
+risk: none
 source: community
 date_added: "2026-02-27"
 ---
@@ -63,6 +63,8 @@ Day 5-7: Finalize document, create tickets
 Week 2+: Action item completion
 Quarterly: Review patterns across incidents
 ```
+
+The incident figures below are fictional examples. Replace them with sourced observations, label estimates/unknowns, and distinguish deployment time, impact start, detection and recovery. Do not infer absence of data loss from recovery alone.
 
 ## Templates
 
@@ -167,7 +169,7 @@ The deployment completed at 14:23, but the first alert didn't fire until 14:31 (
 ### Customer Impact
 - 12,000 unique customers affected
 - Average impact duration: 35 minutes
-- 847 support tickets (23% of affected users)
+- 847 support tickets (about 7.1% of the affected-user count; not necessarily unique users)
 - Customer satisfaction score dropped 12 points
 
 ### Business Impact
@@ -361,7 +363,7 @@ Don't full-flush cache in production; use targeted invalidation.
 | Anti-Pattern | Problem | Better Approach |
 |--------------|---------|-----------------|
 | **Blame game** | Shuts down learning | Focus on systems |
-| **Shallow analysis** | Doesn't prevent recurrence | Ask "why" 5 times |
+| **Shallow analysis** | Doesn't prevent recurrence | Follow evidence across contributing conditions; do not force five whys |
 | **No action items** | Waste of time | Always have concrete next steps |
 | **Unrealistic actions** | Never completed | Scope to achievable tasks |
 | **No follow-up** | Actions forgotten | Track in ticketing system |
@@ -373,7 +375,7 @@ Don't full-flush cache in production; use targeted invalidation.
 - **Be specific** - Exact times, exact errors
 - **Include graphs** - Visual evidence
 - **Assign owners** - No orphan action items
-- **Share widely** - Organizational learning
+- **Share with the authorized audience** - Redact credentials, personal data and sensitive incident details before broader learning
 
 ### Don'ts
 - **Don't name and shame** - Ever

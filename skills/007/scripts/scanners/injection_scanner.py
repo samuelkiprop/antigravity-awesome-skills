@@ -20,6 +20,19 @@ import sys
 import time
 from pathlib import Path
 
+
+def safe_user_path(path_value, base_dir="."):
+    """Resolve a CLI path under the current workspace."""
+    if base_dir != ".":
+        raise ValueError("Custom base directories are not supported for CLI paths")
+    base_path = Path.cwd().resolve()
+    resolved_path = Path(path_value).expanduser().resolve()
+    try:
+        resolved_path.relative_to(base_path)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes allowed directory: {path_value}") from exc
+    return resolved_path
+
 # ---------------------------------------------------------------------------
 # Import from the 007 config hub (parent directory)
 # ---------------------------------------------------------------------------
@@ -546,19 +559,16 @@ def collect_files(target: Path) -> list[Path]:
     files: list[Path] = []
     max_files = config.LIMITS["max_files_per_scan"]
 
-    for root, dirs, filenames in os.walk(target):
-        dirs[:] = [d for d in dirs if d not in config.SKIP_DIRECTORIES]
-
-        for fname in filenames:
-            if len(files) >= max_files:
-                logger.warning(
-                    "Reached max_files_per_scan limit (%d). Stopping.", max_files
-                )
-                return files
-
-            fpath = Path(root) / fname
-            if _should_scan_file(fpath):
-                files.append(fpath)
+    for fpath in safe_user_path(target).rglob("*"):
+        if fpath.is_symlink() or not fpath.is_file() or any(part in config.SKIP_DIRECTORIES for part in fpath.parts):
+            continue
+        if len(files) >= max_files:
+            logger.warning(
+                "Reached max_files_per_scan limit (%d). Stopping.", max_files
+            )
+            return files
+        if _should_scan_file(fpath):
+            files.append(fpath)
 
     return files
 
@@ -569,12 +579,7 @@ def collect_files(target: Path) -> list[Path]:
 
 def _snippet(line: str, match_start: int, context: int = 80) -> str:
     """Extract a short snippet around the match position."""
-    start = max(0, match_start - context // 4)
-    end = min(len(line), match_start + context)
-    raw = line[start:end].strip()
-    if len(raw) > context:
-        raw = raw[:context] + "..."
-    return raw
+    return "[source snippet redacted]"
 
 
 def _is_in_docstring(lines: list[str], line_idx: int) -> bool:
@@ -614,6 +619,9 @@ def scan_file(filepath: Path, verbose: bool = False) -> list[dict]:
 
     # --- Read content ---
     try:
+        if filepath.is_symlink() or not filepath.is_file():
+            raise OSError("Refusing symlink or non-regular input")
+        safe_user_path(filepath)
         text = filepath.read_text(encoding="utf-8", errors="replace")
     except OSError as exc:
         if verbose:
@@ -961,7 +969,7 @@ def run_scan(
 
     config.ensure_directories()
 
-    target = Path(target_path).resolve()
+    target = safe_user_path(target_path).resolve()
     if not target.exists():
         logger.error("Target path does not exist: %s", target)
         sys.exit(1)

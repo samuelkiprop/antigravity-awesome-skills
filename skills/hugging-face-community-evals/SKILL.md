@@ -1,14 +1,20 @@
 ---
-source: "https://github.com/huggingface/skills/tree/main/skills/huggingface-community-evals"
 name: hugging-face-community-evals
-description: Run local evaluations for Hugging Face Hub models with inspect-ai or lighteval.
-risk: unknown
+description: "Run evaluations for Hugging Face Hub models using inspect-ai and lighteval on local hardware. Use for backend selection, local GPU evals, and choosing between vLLM / Transformers / accelerate."
+risk: critical
+source: https://github.com/huggingface/skills/tree/main/skills/huggingface-community-evals
+source_repo: huggingface/skills
+source_type: official
+date_added: 2026-07-01
+license: Apache-2.0
+license_source: https://github.com/huggingface/skills/blob/main/LICENSE
 ---
 
 # Overview
-
 ## When to Use
-Use this skill for local model evaluation, backend selection, and GPU smoke tests outside the Hugging Face Jobs workflow.
+
+Use this skill when you need run evaluations for Hugging Face Hub models using inspect-ai and lighteval on local hardware. Use for backend selection, local GPU evals, and choosing between vLLM / Transformers / accelerate. Not for HF Jobs orchestration, model-card PRs, .eval_results publication, or community-evals...
+
 
 This skill is for **running evaluations against models on the Hugging Face Hub on local hardware**.
 
@@ -28,7 +34,7 @@ It does **not** cover:
 
 If the user wants to **run the same eval remotely on Hugging Face Jobs**, hand off to the `hugging-face-jobs` skill and pass it one of the local scripts in this skill.
 
-If the user wants to **publish results into the community evals workflow**, stop after generating the evaluation run and hand off that publishing step to `~/code/community-evals`.
+If publication is requested, stop after producing local results; ask for the actual reviewed community-evals checkout. `~/code/community-evals` is not bundled or guaranteed to exist.
 
 > All paths below are relative to the directory containing this `SKILL.md`.
 
@@ -42,6 +48,8 @@ If the user wants to **publish results into the community evals workflow**, stop
 | Extra command patterns | `examples/USAGE_EXAMPLES.md` |
 
 # Prerequisites
+
+The bundled lighteval wrapper is disabled pending a release-specific CLI migration: its generic version range mixes incompatible APIs. Use official documentation for a pinned release instead. Inspect examples also require matching installed provider/task versions. Provider-backed runs send prompts externally and may incur charges; agree on recipient, sample limit and budget first. For reproducibility record dependency/model/dataset revisions and generation settings. Never enable remote model code automatically; review a pinned revision and isolate it. Generated-code tasks need enforced sandbox containment; `local` is not isolation.
 
 - Prefer `uv run` for local execution.
 - Set `HF_TOKEN` for gated/private models.
@@ -73,7 +81,7 @@ If `nvidia-smi` is unavailable, either:
 
 # Quick Start
 
-## Option A: inspect-ai with local inference providers path
+## Option A: locally orchestrated Inspect with remote Inference Providers
 
 Best when the model is already supported by Hugging Face Inference Providers and you want the lowest local setup overhead.
 
@@ -201,7 +209,7 @@ For smoke tests, prefer cheaper local runs plus `--limit` or `--max-samples`.
 - Gated/private repo access fails:
   - verify `HF_TOKEN`
 - Custom model code required:
-  - add `--trust-remote-code`
+  - inspect the pinned model code and obtain execution authorization before enabling `--trust-remote-code`; otherwise choose a compatible model
 
 # Examples
 
@@ -212,6 +220,7 @@ See:
 - `scripts/lighteval_vllm_uv.py`
 
 ## Limitations
-- Use this skill only when the task clearly matches the scope described above.
-- Do not treat the output as a substitute for environment-specific validation, testing, or expert review.
-- Stop and ask for clarification if required inputs, permissions, safety boundaries, or success criteria are missing.
+
+- Use this skill only when the task clearly matches its upstream product or API scope.
+- Verify commands, API behavior, pricing, quotas, credentials, and deployment effects against current official documentation before making changes.
+- Do not treat generated examples as a substitute for environment-specific tests, security review, or user approval for destructive or costly actions.

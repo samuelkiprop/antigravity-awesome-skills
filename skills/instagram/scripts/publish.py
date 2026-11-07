@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from api_client import InstagramAPI
 from auth import auto_refresh_if_needed
-from db import Database
+from db import Database, normalize_media_type
 from governance import GovernanceManager
 
 db = Database()
@@ -80,7 +80,7 @@ async def publish_photo(
     as_draft: bool = False,
 ) -> dict:
     """Publica uma foto."""
-    image_url = await upload_if_local(api, image)
+    image_url = image
 
     if as_draft:
         post_id = db.insert_post({
@@ -113,6 +113,7 @@ async def _do_publish_photo(
     local_path: Optional[str] = None,
 ) -> dict:
     """Executa a publicação de foto (2-step)."""
+    image_url = await upload_if_local(api, image_url)
     # Step 1: Criar container
     container = await api.create_media_container(
         media_type="IMAGE",
@@ -173,12 +174,13 @@ async def publish_video(
     as_draft: bool = False,
 ) -> dict:
     """Publica vídeo, reel ou story de vídeo."""
-    video_url = await upload_if_local(api, video)
+    media_type = normalize_media_type(media_type)
+    video_url = video
 
     if as_draft:
         post_id = db.insert_post({
             "account_id": api.account_id,
-            "media_type": media_type.upper(),
+            "media_type": media_type,
             "media_url": video_url,
             "local_path": video if _is_local_file(video) else None,
             "caption": caption,
@@ -194,8 +196,9 @@ async def publish_video(
             api.account_id,
         )
 
+    video_url = await upload_if_local(api, video_url)
     # Step 1: Container
-    ig_type = {"VIDEO": "VIDEO", "REEL": "REELS", "STORY": "STORIES"}[media_type.upper()]
+    ig_type = {"VIDEO": "VIDEO", "REEL": "REELS", "STORY": "STORIES"}[media_type]
     container = await api.create_media_container(
         media_type=ig_type,
         video_url=video_url,
@@ -205,8 +208,8 @@ async def publish_video(
     container_id = container["id"]
 
     post_id = db.insert_post({
-        "account_id": api.account_id,
-        "media_type": media_type.upper(),
+            "account_id": api.account_id,
+            "media_type": media_type,
         "media_url": video_url,
         "caption": caption,
         "status": "container_created",
@@ -225,6 +228,9 @@ async def publish_video(
             db.update_post_status(post_id, "failed", error_msg=error_msg)
             return {"status": "failed", "error": error_msg}
         await asyncio.sleep(5)
+    else:
+        db.update_post_status(post_id, "failed", error_msg="processing_timeout; reconcile before retry")
+        return {"status": "failed", "error": "Container not ready; no publish attempted"}
 
     # Step 2: Publicar
     result = await api.publish_media(container_id)
@@ -260,6 +266,7 @@ async def publish_carousel(
         return {"status": "error", "message": "Carrossel precisa de 2-10 imagens"}
 
     if as_draft:
+        raise ValueError("Carousel drafts do not persist child media; use preview only until implemented")
         post_id = db.insert_post({
             "account_id": api.account_id,
             "media_type": "CAROUSEL",
@@ -359,9 +366,8 @@ def _apply_template(caption: str, variables: dict) -> str:
     """Aplica variáveis a um template de caption."""
     try:
         return caption.format(**variables)
-    except KeyError as e:
-        print(f"AVISO: Variável {e} não fornecida no template")
-        return caption
+    except (KeyError, ValueError, IndexError) as e:
+        raise ValueError("Template variables missing or invalid; not publishing") from e
 
 
 async def run(args) -> None:
@@ -375,6 +381,7 @@ async def run(args) -> None:
 
     # Publicação confirmada
     if args.confirm:
+        raise ValueError("CLI confirmations are not durably bound to action/account/payload; execution disabled. Preview only.")
         result = await do_confirmed_publish(args.confirm_action or "", args.__dict__)
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return
@@ -386,18 +393,19 @@ async def run(args) -> None:
 
         # Aplicar template se especificado
         if args.template:
-            from db import Database
             tpl = Database().get_template_by_name(args.template)
             if tpl:
                 caption = tpl["caption_template"]
                 if tpl.get("hashtag_set"):
                     hashtags = json.loads(tpl["hashtag_set"]) if isinstance(tpl["hashtag_set"], str) else tpl["hashtag_set"]
                     caption = f"{caption}\n\n{' '.join(hashtags)}"
+            else:
+                raise ValueError("Template not found; not publishing")
             if args.vars:
                 variables = dict(v.split("=", 1) for v in args.vars)
                 caption = _apply_template(caption, variables)
 
-        media_type = args.type.upper()
+        media_type = normalize_media_type(args.type)
 
         if media_type == "PHOTO":
             result = await publish_photo(api, args.image, caption, as_draft=args.draft)

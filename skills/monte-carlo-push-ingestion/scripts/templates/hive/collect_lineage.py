@@ -31,6 +31,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from _safe_paths import read_text_file, safe_existing_directory, safe_input_json_path, safe_output_json_path, write_json_file
 
 # ← SUBSTITUTE: set RESOURCE_TYPE to match your Monte Carlo connection type
 RESOURCE_TYPE = "data-lake"
@@ -206,8 +207,7 @@ def collect(log_file: str) -> dict:
         Each edge has destination, sources, and col_mappings lists.
     """
     print(f"Reading Hive log file: {log_file} ...")
-    with open(log_file, errors="replace") as fh:
-        log_text = fh.read()
+    log_text = read_text_file(log_file)
 
     queries = _extract_query_blocks(log_text)
     print(f"  Extracted {len(queries)} query block(s).")
@@ -217,6 +217,7 @@ def collect(log_file: str) -> dict:
 
     manifest = {
         "resource_type": RESOURCE_TYPE,
+        "lineage_candidates": True,
         "collected_at": datetime.now(tz=timezone.utc).isoformat(),
         "edges": [
             {
@@ -255,8 +256,7 @@ def main() -> None:
         print("No lineage edges detected — no CTAS or INSERT INTO ... SELECT patterns found.")
         return
 
-    with open(args.output_file, "w") as fh:
-        json.dump(manifest, fh, indent=2)
+    write_json_file(args.output_file, manifest)
     print(f"Lineage manifest written to {args.output_file}")
     print("Done.")
 

@@ -1,7 +1,7 @@
 ---
 name: wiki-onboarding
 description: "Generate two complementary onboarding documents that together give any engineer — from newcomer to principal — a complete understanding of a codebase. Use when user asks for onboarding docs or getting-started guides, user runs /deep-wiki, or user wants to help new team members understand a codebase."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -48,7 +48,7 @@ Scan the repository for build files to determine the primary language for code e
 - Every claim backed by `(file_path:line_number)` citation
 - Minimum 3 Mermaid diagrams (architecture, data flow, dependency graph)
 - All Mermaid diagrams use dark-mode colors (see wiki-vitepress skill)
-- Focus on WHY decisions were made, not just WHAT exists
+- Focus on WHY only when commit history, ADRs or owner evidence supports the rationale. Mark inferred rationale and unknown performance/security properties explicitly; source structure alone cannot establish intent or measured limits.
 
 ## Guide 2: Zero-to-Hero Contributor Guide
 
@@ -80,6 +80,12 @@ Scan the repository for build files to determine the primary language for code e
 
 ### When to Use
 This skill is applicable to execute the workflow or actions described in the overview.
+
+## Example
+
+**User request:**
+
+> Create onboarding documentation that helps a new engineer run, understand, and safely change this codebase.
 
 ## Limitations
 - Use this skill only when the task clearly matches the scope described above.

@@ -17,7 +17,9 @@ Endpoints:
 from __future__ import annotations
 
 import argparse
+from contextlib import asynccontextmanager
 import csv
+import re
 import io
 import json
 import sys
@@ -36,14 +38,20 @@ except ImportError:
     print("FastAPI não instalado. Execute: pip install fastapi uvicorn")
     sys.exit(1)
 
+@asynccontextmanager
+async def lifespan(app):
+    db.init()
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="Leiloeiros Juntas Comerciais Brasil",
     description="API de dados de leiloeiros oficiais de todas as 27 Juntas Comerciais do Brasil",
     version="1.0.0",
 )
 
 db = Database()
-db.init()
 
 
 @app.get("/", summary="Informações da API")
@@ -85,9 +93,9 @@ def list_leiloeiros(
 @app.get("/leiloeiros/{estado}", summary="Leiloeiros de um estado específico")
 def leiloeiros_por_estado(estado: str):
     estado = estado.upper()
-    if len(estado) != 2:
+    if not re.fullmatch(r"[A-Z]{2}", estado):
         raise HTTPException(status_code=400, detail="Estado deve ser a UF com 2 letras (ex: SP)")
-    records = db.get_by_estado(estado)
+    records = db.get_all(estado=estado, limit=5000)
     return {"estado": estado, "total": len(records), "data": records}
 
 
@@ -111,7 +119,7 @@ def stats():
 
 @app.get("/export/json", summary="Exporta todos os dados em JSON")
 def export_json():
-    records = db.get_all()
+    records = db.get_all(limit=5000)
     return JSONResponse(
         content={"total": len(records), "data": records},
         headers={"Content-Disposition": "attachment; filename=leiloeiros.json"},
@@ -120,7 +128,7 @@ def export_json():
 
 @app.get("/export/csv", summary="Exporta todos os dados em CSV")
 def export_csv():
-    records = db.get_all()
+    records = db.get_all(limit=5000)
     if not records:
         return PlainTextResponse("Nenhum dado encontrado.")
 
@@ -131,7 +139,10 @@ def export_csv():
         extrasaction="ignore",
     )
     writer.writeheader()
-    writer.writerows(records)
+    writer.writerows({
+        key: ("'" + value if isinstance(value, str) and re.match(r"^[\x00-\x20]*[=+@-]", value) else value)
+        for key, value in record.items()
+    } for record in records)
     output.seek(0)
 
     return StreamingResponse(
@@ -147,6 +158,10 @@ def main():
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--reload", action="store_true")
     args = parser.parse_args()
+    if args.host not in {"127.0.0.1", "localhost"}:
+        parser.error("unauthenticated local API must remain loopback-only")
+    if not 1 <= args.port <= 65535:
+        parser.error("port must be 1..65535")
 
     print(f"\nAPI disponível em: http://{args.host}:{args.port}")
     print(f"Docs interativos: http://{args.host}:{args.port}/docs\n")

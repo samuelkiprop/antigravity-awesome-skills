@@ -24,6 +24,7 @@ const generator = await pipeline(
 
 const result = await generator('Once upon a time', {
   max_new_tokens: 100,
+  do_sample: true,
   temperature: 0.7,
 });
 
@@ -58,6 +59,7 @@ const streamer = new TextStreamer(generator.tokenizer, {
 
 await generator('Tell me a story', {
   max_new_tokens: 200,
+  do_sample: true,
   temperature: 0.7,
   streamer,
 });
@@ -74,19 +76,19 @@ await generator('Tell me a story', {
   <div id="output"></div>
 
   <script type="module">
-    import { pipeline, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
-    
+    import { pipeline, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4';
+
     const generator = await pipeline(
       'text-generation',
       'onnx-community/Qwen2.5-0.5B-Instruct',
       { dtype: 'q4' }
     );
-    
+
     window.generate = async function() {
       const prompt = document.getElementById('prompt').value;
       const outputDiv = document.getElementById('output');
       outputDiv.textContent = '';
-      
+
       const streamer = new TextStreamer(generator.tokenizer, {
         skip_prompt: true,
         skip_special_tokens: true,
@@ -94,9 +96,10 @@ await generator('Tell me a story', {
           outputDiv.textContent += token;
         },
       });
-      
+
       await generator(prompt, {
         max_new_tokens: 200,
+        do_sample: true,
         temperature: 0.7,
         streamer,
       });
@@ -118,11 +121,12 @@ function StreamingGenerator() {
   const [loading, setLoading] = useState(false);
 
   const handleGenerate = async (prompt) => {
-    if (!prompt) return;
-    
+    if (!prompt || loading) return;
+
     setLoading(true);
+    try {
     setOutput('');
-    
+
     // Load model on first generate
     if (!generatorRef.current) {
       generatorRef.current = await pipeline(
@@ -131,7 +135,7 @@ function StreamingGenerator() {
         { dtype: 'q4' }
       );
     }
-    
+
     const streamer = new TextStreamer(generatorRef.current.tokenizer, {
       skip_prompt: true,
       skip_special_tokens: true,
@@ -142,11 +146,16 @@ function StreamingGenerator() {
 
     await generatorRef.current(prompt, {
       max_new_tokens: 200,
+      do_sample: true,
       temperature: 0.7,
       streamer,
     });
-    
-    setLoading(false);
+
+    } catch (error) {
+      setOutput('Generation failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Cleanup on unmount
@@ -191,6 +200,7 @@ const messages = [
 
 const result = await generator(messages, {
   max_new_tokens: 256,
+  do_sample: true,
   temperature: 0.7,
 });
 
@@ -209,6 +219,7 @@ const conversation = [
 
 const result = await generator(conversation, {
   max_new_tokens: 200,
+  do_sample: true,
   temperature: 0.7,
 });
 
@@ -225,17 +236,17 @@ await generator(prompt, {
   // Token limits
   max_new_tokens: 512,        // Maximum tokens to generate
   min_new_tokens: 0,          // Minimum tokens to generate
-  
+
   // Sampling
-  temperature: 0.7,           // Randomness (0.0-2.0)
+  temperature: 0.7,           // Positive sampling temperature; supported values depend on model
   top_k: 50,                  // Consider top K tokens
   top_p: 0.95,                // Nucleus sampling
   do_sample: true,            // Use random sampling (false = always pick most likely token)
-  
+
   // Repetition control
   repetition_penalty: 1.0,    // Penalty for repeating (1.0 = no penalty)
   no_repeat_ngram_size: 0,    // Prevent repeating n-grams
-  
+
   // Streaming
   streamer: streamer,         // TextStreamer instance
 });
@@ -250,33 +261,35 @@ await generator(prompt, {
 
 ```javascript
 // Focused output
-await generator(prompt, { temperature: 0.3, max_new_tokens: 100 });
+await generator(prompt, { do_sample: true, temperature: 0.3, max_new_tokens: 100 });
 
 // Creative output
-await generator(prompt, { temperature: 1.2, max_new_tokens: 100 });
+await generator(prompt, { do_sample: true, temperature: 1.2, max_new_tokens: 100 });
 ```
 
 **Sampling Methods:**
 
 ```javascript
 // Greedy (deterministic)
-await generator(prompt, { 
+await generator(prompt, {
   do_sample: false,
-  max_new_tokens: 100 
+  max_new_tokens: 100
 });
 
 // Top-k sampling
-await generator(prompt, { 
+await generator(prompt, {
   top_k: 50,
+  do_sample: true,
   temperature: 0.7,
-  max_new_tokens: 100 
+  max_new_tokens: 100
 });
 
 // Top-p (nucleus) sampling
-await generator(prompt, { 
+await generator(prompt, {
   top_p: 0.95,
+  do_sample: true,
   temperature: 0.7,
-  max_new_tokens: 100 
+  max_new_tokens: 100
 });
 ```
 

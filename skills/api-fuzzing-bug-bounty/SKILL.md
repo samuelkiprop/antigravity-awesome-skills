@@ -7,6 +7,20 @@ author: zebbern
 date_added: "2026-02-27"
 ---
 
+> **⚠️ AUTHORIZED USE ONLY**
+> This skill is for educational purposes or authorized security assessments only.
+> You must have explicit, written permission from the system owner before using this tool.
+> Misuse of this tool is illegal and strictly prohibited.
+
+> **Mandatory confirmation gate**
+> Before running any command that probes, exploits, changes, persists on, extracts data from, or attempts credential access against a target:
+> 1. Ask the user to state the exact target URL, IP, account, or resource.
+> 2. Ask the user to confirm written authorization and the permitted scope.
+> 3. Show the exact command(s) and explain their expected effect.
+> 4. Wait for explicit confirmation in the current conversation.
+>
+> Without that confirmation, remain read-only and provide defensive guidance only. Prefer a sandbox, disposable VM, or controlled lab.
+
 > AUTHORIZED USE ONLY: Use this skill only for authorized security assessments, defensive validation, or controlled educational environments.
 
 # API Fuzzing for Bug Bounty
@@ -44,6 +58,8 @@ Provide comprehensive techniques for testing REST, SOAP, and GraphQL APIs during
 ---
 
 ## Core Workflow
+
+Use controlled test accounts/tenants and read-only canary resources. Scope rate, concurrency, duration, write/delete methods, SSRF destinations and any callback endpoint in the rules of engagement. DoS/deep recursion, credential attacks and destructive method tests require explicit separate approval and a disposable lab where possible. Stop on rate limits or unexpected access to real personal data; never evade limits through IP rotation. Payloads below are hypotheses, not proof of a vulnerability or a mandate to try every technique.
 
 ### Step 1: API Reconnaissance
 
@@ -122,7 +138,7 @@ URL?id=<LEGIT>&id=<VICTIM>
 {"id":"56456"}                    → OK
 {"id":"56456 AND 1=1#"}           → OK  
 {"id":"56456 AND 1=2#"}           → OK
-{"id":"56456 AND 1=3#"}           → ERROR (vulnerable!)
+{"id":"56456 AND 1=3#"}           → Observe response; an error alone proves nothing
 {"id":"56456 AND sleep(15)#"}     → SLEEP 15 SEC
 ```
 
@@ -197,9 +213,7 @@ Fetch entire backend schema:
 # Try accessing other user IDs
 query {
   user(id: "OTHER_USER_ID") {
-    email
-    password
-    creditCard
+    id  # Controlled canary record only; do not request real passwords/payment data
   }
 }
 ```
@@ -430,9 +444,9 @@ curl -X POST https://target.com/graphql \
 | Issue | Solution |
 |-------|----------|
 | API returns nothing | Add `X-Requested-With: XMLHttpRequest` header |
-| 401 on all endpoints | Try adding `?user_id=1` parameter |
+| 401 on all endpoints | Verify authorized test credentials/scope first; do not assume a user_id parameter repairs authentication |
 | GraphQL introspection disabled | Use clairvoyance for schema reconstruction |
-| Rate limited | Use IP rotation or batch requests |
+| Rate limited | Stop/back off, preserve the response and respect the approved rate; do not bypass it |
 | Can't find endpoints | Check Swagger, archive.org, JS files |
 
 ## When to Use

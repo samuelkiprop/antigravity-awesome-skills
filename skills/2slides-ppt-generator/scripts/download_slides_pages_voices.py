@@ -8,11 +8,93 @@ import os
 import sys
 import json
 import argparse
+import ipaddress
+import re
+import socket
+import ssl
+import http.client
+import tempfile
 import requests
+from urllib.parse import urlparse
 from typing import Optional, Dict, Any
+from pathlib import Path
+
+
+def safe_user_path(path_value, base_dir="."):
+    """Resolve a CLI path under the current workspace."""
+    if base_dir != ".":
+        raise ValueError("Custom base directories are not supported for CLI paths")
+    base_path = Path.cwd().resolve()
+    resolved_path = Path(path_value).expanduser().resolve()
+    try:
+        resolved_path.relative_to(base_path)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes allowed directory: {path_value}") from exc
+    return resolved_path
 
 
 API_BASE_URL = "https://2slides.com/api/v1"
+JOB_ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+def validate_job_id(job_id: str) -> str:
+    if not JOB_ID_RE.fullmatch(job_id or ""):
+        raise ValueError("Job ID contains unsupported characters")
+    return job_id
+
+
+def validate_public_https_url(url: str) -> tuple[str, str]:
+    if any(ord(c) < 33 or ord(c) == 127 for c in url):
+        raise ValueError("Download URL contains whitespace/control characters")
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.port not in (None, 443):
+        raise ValueError("Download URL must be HTTPS")
+    public_ips = []
+    for info in socket.getaddrinfo(parsed.hostname, None):
+        ip = ipaddress.ip_address(info[4][0])
+        if not ip.is_global:
+            raise ValueError("Download URL resolves to a non-public address")
+        public_ips.append(str(ip))
+    if not public_ips:
+        raise ValueError("Download URL did not resolve")
+    return url, public_ips[0]
+
+
+def download_pinned_https(url: str, pinned_ip: str, output_path: Path, maximum_bytes: int = 128 * 1024 * 1024) -> int:
+    """Download once from the verified IP while preserving TLS SNI/hostname checks."""
+    parsed = urlparse(url)
+    raw_socket = socket.create_connection((pinned_ip, 443), timeout=30)
+    tls_context = ssl.create_default_context()
+    tls_context.minimum_version = ssl.TLSVersion.TLSv1_2
+    tls_socket = tls_context.wrap_socket(raw_socket, server_hostname=parsed.hostname)
+    request_target = parsed.path or "/"
+    if parsed.query:
+        request_target += f"?{parsed.query}"
+    host = parsed.hostname
+    tls_socket.sendall(
+        f"GET {request_target} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: 2slides-downloader/1\r\nAccept: application/zip\r\nConnection: close\r\n\r\n".encode("ascii")
+    )
+    response = http.client.HTTPResponse(tls_socket)
+    response.begin()
+    if 300 <= response.status < 400:
+        raise ValueError("Download redirects are refused; request a fresh final URL from 2slides")
+    if response.status != 200:
+        raise ValueError(f"Download failed with HTTP {response.status}")
+    declared = response.getheader("Content-Length")
+    if declared and int(declared) > maximum_bytes:
+        raise ValueError("Download exceeds the 128 MiB limit")
+    total = 0
+    with output_path.open("wb") as destination:
+        while True:
+            chunk = response.read(8192)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > maximum_bytes:
+                raise ValueError("Download exceeds the 128 MiB limit")
+            destination.write(chunk)
+    response.close()
+    return total
 
 
 def get_api_key() -> str:
@@ -51,6 +133,7 @@ def download_slides_pages_voices(
     """
     if api_key is None:
         api_key = get_api_key()
+    job_id = validate_job_id(job_id)
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -65,7 +148,7 @@ def download_slides_pages_voices(
 
     print(f"Requesting download for job: {job_id}...", file=sys.stderr)
 
-    response = requests.post(url, headers=headers, json=payload, timeout=30)
+    response = requests.post(url, headers=headers, json=payload, timeout=30, allow_redirects=False)
     response.raise_for_status()
 
     result = response.json()
@@ -83,6 +166,7 @@ def download_slides_pages_voices(
     download_url = data.get("downloadUrl")
     if not download_url:
         raise ValueError("No download URL in response")
+    download_url, pinned_ip = validate_public_https_url(download_url)
 
     # Optional: log additional info
     file_name = data.get("fileName", "unknown.zip")
@@ -96,15 +180,19 @@ def download_slides_pages_voices(
 
     print(f"Downloading ZIP archive to: {output_path}...", file=sys.stderr)
 
-    zip_response = requests.get(download_url, stream=True, timeout=120)
-    zip_response.raise_for_status()
-
-    # Save to file
-    with open(output_path, 'wb') as f:
-        for chunk in zip_response.iter_content(chunk_size=8192):
-            f.write(chunk)
-
-    file_size = os.path.getsize(output_path)
+    destination = safe_user_path(output_path)
+    if destination.exists():
+        raise FileExistsError("Refusing to overwrite an existing output file")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(prefix=".2slides-", suffix=".zip", dir=destination.parent, delete=False) as tmp:
+        temporary = Path(tmp.name)
+    try:
+        file_size = download_pinned_https(download_url, pinned_ip, temporary)
+        os.chmod(temporary, 0o600)
+        # Hard-link creation is atomic and fails if another writer won the name.
+        os.link(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
     print(f"✓ Downloaded successfully!", file=sys.stderr)
     print(f"  File: {output_path}", file=sys.stderr)
     print(f"  Size: {file_size:,} bytes", file=sys.stderr)

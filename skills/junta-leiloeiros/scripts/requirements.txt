@@ -1,7 +1,9 @@
 # Dependências principais
 httpx>=0.27.0
 beautifulsoup4>=4.12.0
-lxml>=5.0.0
+# Security floor for BeautifulSoup selector parsing (CVE-2026-49477).
+soupsieve>=2.8.4
+lxml>=6.1.0
 
 # API
 fastapi>=0.111.0

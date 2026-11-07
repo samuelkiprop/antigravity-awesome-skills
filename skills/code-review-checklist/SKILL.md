@@ -1,7 +1,7 @@
 ---
 name: code-review-checklist
 description: "Comprehensive checklist for conducting thorough code reviews covering functionality, security, performance, and maintainability"
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -117,14 +117,15 @@ function createUser(email, password) {
 
 **✅ Good - Proper validation:**
 \`\`\`javascript
-function createUser(email, password) {
+async function createUser(email, password) {
   if (!email || !isValidEmail(email)) {
     throw new Error('Invalid email address');
   }
   if (!password || password.length < 8) {
     throw new Error('Password must be at least 8 characters');
   }
-  return db.users.create({ email, password });
+  const passwordHash = await hashPassword(password); // configured password-hashing library
+  return db.users.create({ email, passwordHash });
 }
 \`\`\`
 ```
@@ -177,7 +178,7 @@ db.query(query, [email]);
 
 **❌ Bad - Hardcoded secret:**
 \`\`\`javascript
-const API_KEY = 'sk_live_abc123xyz';
+const leakedToken = '[redacted live key]';
 \`\`\`
 
 **✅ Good - Environment variable:**
@@ -274,6 +275,8 @@ function processOrder(order) {
 }
 \`\`\`
 ```
+
+The “separated concerns” order example demonstrates structure only: real payment/inventory/email operations need awaited failures, idempotency and a transaction/outbox or compensation strategy. Validation alone does not secure password storage. A checklist records what was inspected, tested or unavailable; do not tick unobserved checks or treat scanner silence as proof of absence.
 
 ## Best Practices
 

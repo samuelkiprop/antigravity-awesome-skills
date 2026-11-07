@@ -39,7 +39,11 @@ When reviewing fix commits:
 2. Verify the fix addresses the root cause, not just symptoms
 3. Check for potential side effects or new issues
 4. Validate that tests cover the fixed scenario
-5. Ensure no similar vulnerabilities exist elsewhere
+5. Search reachable related paths for the same root cause; record what was covered and what remains unverified
+
+## Evidence record
+
+Bind the review to the exact full head SHA, original finding and affected scope. Record the pre-fix trigger, post-fix behavior, tests actually run, unresolved variants and limitations. A test that cannot run is unverified, not passing. This instruction alone does not satisfy a repository Tessl or maintainer merge gate.
 
 ## Best Practices
 
@@ -52,6 +56,12 @@ When reviewing fix commits:
 ## Resources
 
 For more information, see the [source repository](https://github.com/trailofbits/skills/tree/main/plugins/fix-review).
+
+## Example
+
+**User request:**
+
+> Review commits that address security audit findings.
 
 ## Limitations
 - Use this skill only when the task clearly matches the scope described above.

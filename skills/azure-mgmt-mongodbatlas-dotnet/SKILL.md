@@ -1,7 +1,7 @@
 ---
 name: azure-mgmt-mongodbatlas-dotnet
 description: "Manage MongoDB Atlas Organizations as Azure ARM resources with unified billing through Azure Marketplace."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -65,6 +65,8 @@ var armClient = new ArmClient(credential);
 | `MongoDBAtlasPartnerProperties` | MongoDB-specific properties (org name, ID) |
 
 ## Workflows
+
+Confirm tenant, target subscription/resource group, Marketplace offer/plan/terms and cost before provisioning. The sample private-plan identifiers are illustrative and may not be available to the account; "Free" in a display name is not a billing guarantee. Default subscription selection must be checked explicitly. Deletion and admin changes require scoped authorization and a dependency/recovery review. Pin the SDK version and verify signatures before compiling; no deployment is claimed.
 
 ### Get Organization Collection
 

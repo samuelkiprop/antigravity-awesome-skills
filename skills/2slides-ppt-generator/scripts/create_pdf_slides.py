@@ -8,7 +8,6 @@ import os
 import sys
 import json
 import argparse
-import requests
 from typing import Optional, Dict, Any
 
 
@@ -55,6 +54,8 @@ def create_pdf_slides(
     Returns:
         Dict with generation result
     """
+    import requests
+
     if api_key is None:
         api_key = get_api_key()
 
@@ -73,16 +74,19 @@ def create_pdf_slides(
     }
 
     if design_spec:
-        payload["designSpec"] = design_spec
+        payload["designStyle"] = design_spec
 
     url = f"{API_BASE_URL}/slides/create-pdf-slides"
+
+    if isinstance(page, bool) or not isinstance(page, int) or not 0 <= page <= 100:
+        raise ValueError("page must be an integer from 0 to 100")
 
     # Calculate dynamic timeout: ~30s per page, minimum 120s
     timeout = max(120, page * 40)
 
     print("Generating custom-designed slides...", file=sys.stderr)
     print(f"(Timeout set to {timeout}s for {page} page(s))", file=sys.stderr)
-    response = requests.post(url, headers=headers, json=payload, timeout=timeout)
+    response = requests.post(url, headers=headers, json=payload, timeout=timeout, allow_redirects=False)
     response.raise_for_status()
 
     result = response.json()
@@ -99,13 +103,11 @@ def create_pdf_slides(
             "slidePageCount": data.get("slidePageCount"),
             "jobId": data.get("jobId")
         }
-        print("✓ Slides generated successfully!", file=sys.stderr)
+        print(f"Request accepted; generation status: {data.get('status', 'unknown')}", file=sys.stderr)
         print(f"  Pages: {data.get('slidePageCount')}", file=sys.stderr)
         return normalized_result
     else:
-        # Fallback to raw result if structure is unexpected
-        print("✓ Request completed!", file=sys.stderr)
-        return result
+        raise ValueError("Generation failed or returned an unexpected response envelope")
 
 
 def main():

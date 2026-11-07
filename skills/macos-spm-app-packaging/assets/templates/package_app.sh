@@ -4,16 +4,54 @@ set -euo pipefail
 CONF=${1:-release}
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
+[[ "$CONF" == debug || "$CONF" == release ]] || { echo "Expected debug or release" >&2; exit 1; }
 
 APP_NAME=${APP_NAME:-MyApp}
+# AAS review: constrain names before constructing removal paths, process patterns or XML.
+[[ "$APP_NAME" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]] || { echo "Invalid APP_NAME" >&2; exit 1; }
+
 BUNDLE_ID=${BUNDLE_ID:-com.example.myapp}
+[[ "$BUNDLE_ID" =~ ^[A-Za-z0-9][A-Za-z0-9.-]+$ ]] || { echo "Invalid BUNDLE_ID" >&2; exit 1; }
 MACOS_MIN_VERSION=${MACOS_MIN_VERSION:-14.0}
 MENU_BAR_APP=${MENU_BAR_APP:-0}
 SIGNING_MODE=${SIGNING_MODE:-}
 APP_IDENTITY=${APP_IDENTITY:-}
 
+read_version_env() {
+  local file=$1 line key value
+  local saw_marketing=0 saw_build=0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line=${line%$'\r'}
+    [[ "$line" =~ ^[[:space:]]*$ || "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" == *=* ]] || { echo "Invalid version.env line" >&2; return 1; }
+    key=${line%%=*}
+    value=${line#*=}
+    case "$key" in
+      MARKETING_VERSION)
+        [[ "$value" =~ ^[0-9]+(\.[0-9]+){1,3}([+-][0-9A-Za-z.-]+)?$ ]] || {
+          echo "Invalid MARKETING_VERSION in version.env" >&2; return 1;
+        }
+        MARKETING_VERSION=$value
+        saw_marketing=1
+        ;;
+      BUILD_NUMBER)
+        [[ "$value" =~ ^[0-9]+$ ]] || {
+          echo "Invalid BUILD_NUMBER in version.env" >&2; return 1;
+        }
+        BUILD_NUMBER=$value
+        saw_build=1
+        ;;
+      *) echo "Unknown key in version.env: $key" >&2; return 1 ;;
+    esac
+  done < "$file"
+  (( saw_marketing == 1 && saw_build == 1 )) || {
+    echo "version.env must define MARKETING_VERSION and BUILD_NUMBER" >&2
+    return 1
+  }
+}
+
 if [[ -f "$ROOT/version.env" ]]; then
-  source "$ROOT/version.env"
+  read_version_env "$ROOT/version.env"
 else
   MARKETING_VERSION=${MARKETING_VERSION:-0.1.0}
   BUILD_NUMBER=${BUILD_NUMBER:-1}
@@ -36,8 +74,8 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Framewor
 # Convert Icon.icon to Icon.icns if present (requires iconutil).
 ICON_SOURCE="$ROOT/Icon.icon"
 ICON_TARGET="$ROOT/Icon.icns"
-if [[ -f "$ICON_SOURCE" ]]; then
-  iconutil --convert icns --output "$ICON_TARGET" "$ICON_SOURCE"
+if [[ -e "$ICON_SOURCE" ]]; then
+  "$ROOT/Scripts/build_icon.sh" "$ICON_SOURCE"
 fi
 
 LSUI_VALUE="false"

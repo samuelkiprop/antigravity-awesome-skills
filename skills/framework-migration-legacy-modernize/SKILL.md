@@ -1,7 +1,7 @@
 ---
 name: framework-migration-legacy-modernize
 description: "Orchestrate a comprehensive legacy system modernization using the strangler fig pattern, enabling gradual replacement of outdated components while maintaining continuous business operations through ex"
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -27,9 +27,10 @@ Orchestrate a comprehensive legacy system modernization using the strangler fig 
 - Clarify goals, constraints, and required inputs.
 - Apply relevant best practices and validate outcomes.
 - Provide actionable steps and verification.
-- If detailed examples are required, open `resources/implementation-playbook.md`.
 
 ## Phase 1: Legacy Assessment and Risk Analysis
+
+Treat thresholds/percentages and pseudo-command options below as planning examples, not an installed CLI or guaranteed outcomes. Use actual host tools and delegate only when authorized. Before traffic shifting or dual writes, define the source of truth, idempotency, ordering, reconciliation, backfill and rollback for both schema and data; dual writes are not inherently consistent. Characterize critical behavior regardless of line coverage, and decommission only after verifying scheduled/batch/offline consumers and retention/recovery obligations, not merely zero observed web traffic. Production writes/deletion and external communication need scoped authority.
 
 ### 1. Comprehensive Legacy System Analysis
 - Use Task tool with subagent_type="legacy-modernizer"
@@ -133,6 +134,12 @@ Orchestrate a comprehensive legacy system modernization using the strangler fig 
 - Complete documentation enabling new developer onboarding in <1 week
 
 Target: $ARGUMENTS
+
+## Example
+
+**User request:**
+
+> Plan a strangler-fig migration for this legacy system, preserving service continuity and defining measurable cutover stages.
 
 ## Limitations
 - Use this skill only when the task clearly matches the scope described above.

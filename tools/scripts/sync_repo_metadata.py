@@ -9,11 +9,19 @@ from pathlib import Path
 
 from plugin_compatibility import compatibility_by_skill_id, load_plugin_compatibility
 from sync_editorial_bundles import load_editorial_bundles, render_bundles_doc
-from update_readme import configure_utf8_output, find_repo_root, load_metadata, update_readme
+from update_readme import (
+    VERSION_TOKEN_PATTERN,
+    configure_utf8_output,
+    core_release_boundary,
+    core_release_status,
+    find_repo_root,
+    load_metadata,
+    update_readme,
+)
 
 
 ABOUT_DESCRIPTION_RE = re.compile(r'"description"\s*:\s*"([^"]*)"')
-GITHUB_HOMEPAGE_URL = "https://sickn33.github.io/antigravity-awesome-skills/"
+GITHUB_HOMEPAGE_URL = "https://aaskills.tech/"
 RECOMMENDED_TOPICS = [
     "antigravity",
     "antigravity-skills",
@@ -37,16 +45,23 @@ RECOMMENDED_TOPICS = [
     "mcp",
 ]
 README_TAGLINE_RE = re.compile(
-    r"^> \*\*Installable GitHub library of \d[\d,]*\+ agentic skills for Claude Code, Cursor, Codex CLI, Gemini CLI, Antigravity, and other AI coding assistants\.\*\*$",
+    r"^> \*\*(?:Local, agent-owned skill stacks for coding agents—from complete catalog access to a reproducible, reviewable plan\.|A complete local skill catalog for coding agents—from project inspection and agent-owned selection to a reproducible, reviewable plan\.|Local, deterministic skill-stack composition for coding agents—from an explicit project profile to a reviewable plan before any target change\.|AAS Core is the local, agent-first control plane for composing explainable, reproducible skill stacks from a catalog of \d[\d,]*\+ agentic skills\.|Installable GitHub library of \d[\d,]*\+ agentic skills for Claude Code, Cursor, Codex CLI, (?:Autohand Code, )?Gemini CLI, Antigravity, and other AI coding assistants\.)\*\*$",
     re.MULTILINE,
 )
-README_RELEASE_RE = re.compile(r"^\*\*Current release: V[\d.]+\.\*\* .*?$", re.MULTILINE)
+README_TITLE_RE = re.compile(
+    r"^# (?:🌌 Agentic Awesome Skills: .*|AAS Core — Agentic Awesome Skills|Agentic Awesome Skills — AI Skills & AAS Core)$",
+    re.MULTILINE,
+)
+README_RELEASE_RE = re.compile(
+    rf"^\*\*Current release: V{VERSION_TOKEN_PATTERN}\.\*\* .*?$",
+    re.MULTILINE,
+)
 README_BROAD_COVERAGE_RE = re.compile(
     r"^- \*\*Broad coverage with real utility\*\*: \d[\d,]*\+ skills across development, testing, security, infrastructure, product, and marketing\.$",
     re.MULTILINE,
 )
 README_NEW_HERE_RE = re.compile(
-    r"^\*\*Antigravity Awesome Skills\*\* \(Release [\d.]+\) is a large, installable skill library.*$",
+    r"^\*\*Agentic Awesome Skills\*\* \(Release [\d.]+\) is a large, installable skill library.*$",
     re.MULTILINE,
 )
 README_INLINE_BROWSE_RE = re.compile(
@@ -56,8 +71,20 @@ README_TOC_BROWSE_RE = re.compile(
     r"^- \[Browse \d[\d,]*\+ Skills\]\(#browse-\d+-skills\)$",
     re.MULTILINE,
 )
+README_AGENT_SELECTION_PARAGRAPH_RE = re.compile(
+    r"^Codex or Claude inspects your project(?:, enumerates its primary capabilities, searches and compares candidates across| and chooses exact skills from) the complete local AAS catalog.*$",
+    re.MULTILINE,
+)
+README_SUPPORTING_PLAYBOOKS_RE = re.compile(
+    r"^The (?:\d[\d,]*\+ )?reusable `SKILL\.md` playbooks, specialized plugins, bundles, workflows, and direct installers remain important\..*$",
+    re.MULTILINE,
+)
+README_CAPABILITY_COVERAGE_RE = re.compile(
+    r"^- \*\*(?:Require|Guide) capability coverage\.\*\* MCP session instructions require the agent to evaluate the full project surface.*$",
+    re.MULTILINE,
+)
 GETTING_STARTED_TITLE_RE = re.compile(
-    r"^# Getting Started with Antigravity Awesome Skills \(V[\d.]+\)$", re.MULTILINE
+    r"^# Getting Started with (?:Agentic Awesome Skills \(V[\d.]+\)|AAS Core)$", re.MULTILINE
 )
 BUNDLES_FOOTER_RE = re.compile(
     r"^_Last updated: .*? \| Total Skills: \d[\d,]*\+ \| Total Bundles: \d+_$",
@@ -67,9 +94,8 @@ BUNDLES_FOOTER_RE = re.compile(
 
 def build_about_description(metadata: dict) -> str:
     return (
-        f"Installable GitHub library of {metadata['total_skills_label']} agentic skills for "
-        "Claude Code, Cursor, Codex CLI, Gemini CLI, Antigravity, and more. "
-        "Includes specialized plugins, installer CLI, bundles, workflows, and official/community skill collections."
+        f"{metadata['total_skills_label']} reusable AI agent skills for Claude Code, Codex, Cursor and Gemini CLI. "
+        "AAS Core adds local catalog discovery, agent-owned selection and plan preview. CLI, MCP and plugins."
     )
 
 
@@ -132,21 +158,61 @@ def count_documented_bundles(content: str) -> int:
 
 
 def sync_readme_copy(content: str, metadata: dict) -> str:
-    star_celebration = metadata.get("star_celebration", "25k")
+    version = metadata["version"]
+    release_status = core_release_status(metadata)
     replacements = [
+        (
+            README_TITLE_RE,
+            "# Agentic Awesome Skills — AI Skills & AAS Core",
+        ),
         (
             README_TAGLINE_RE,
             (
-                f"> **Installable GitHub library of {metadata['total_skills_label']} agentic skills "
-                "for Claude Code, Cursor, Codex CLI, Gemini CLI, Antigravity, and other AI coding assistants.**"
+                "> **Local, agent-owned skill stacks for coding agents—from complete catalog access to a "
+                "reproducible, reviewable plan.**"
             ),
         ),
         (
             README_RELEASE_RE,
             (
-                f"**Current release: V{metadata['version']}.** Trusted by {star_celebration}+ GitHub stargazers, "
-                "this repository combines official and community skill collections with bundles, "
-                "workflows, installation paths, and docs that help you go from first install to daily use quickly."
+                f"**Current release: V{version}.** AAS Core supports local catalog inspection, "
+                "agent-owned selection, stack validation, and plan preview. Apply and recovery remain "
+                "experimental. [Read the AAS Core preview guide]"
+                f"(https://github.com/sickn33/agentic-awesome-skills/blob/v{version}/docs/users/aas-core.md) "
+                "for setup and exact trust boundaries."
+                if re.search(r"^Agentic Awesome Skills is a library of \d[\d,]*\+", content, re.MULTILINE)
+                else (
+                    f"**Current release: V{version}.** {release_status}Apply and recovery remain experimental "
+                    "and outside the supported preview path."
+                )
+            ),
+        ),
+        (
+            README_AGENT_SELECTION_PARAGRAPH_RE,
+            (
+                "Codex or Claude inspects your project and chooses exact skills from the complete local AAS catalog. "
+                "AAS Core does not rank or recommend them: its read-only `compose_stack` tool validates the "
+                "agent-owned selection in memory, and a client or the `aas` CLI can persist it as `aas-stack.json` "
+                "and produce an immutable plan before any target change."
+            ),
+        ),
+        (
+            README_SUPPORTING_PLAYBOOKS_RE,
+            (
+                "The reusable `SKILL.md` playbooks, specialized plugins, bundles, workflows, and direct installers "
+                "remain important. They are the content, curation, distribution, and compatibility layers around "
+                "AAS Core—not competing primary products."
+            ),
+        ),
+        (
+            README_CAPABILITY_COVERAGE_RE,
+            (
+                "- **Guide capability coverage.** MCP session instructions require the agent to evaluate the full "
+                "project surface—from architecture, domain behavior, data and integrations through testing, "
+                "security, UX, deployment, and maintenance—then search each applicable capability, compare "
+                "multiple candidates, cover it with a non-redundant skill or report a catalog gap, and avoid "
+                "stopping at a minimal shortlist. Core records and validates the resulting selection, but it "
+                "does not certify semantic completeness."
             ),
         ),
         (
@@ -159,10 +225,10 @@ def sync_readme_copy(content: str, metadata: dict) -> str:
         (
             README_NEW_HERE_RE,
             (
-                f"**Antigravity Awesome Skills** (Release {metadata['version']}) is a large, installable "
+                f"**Agentic Awesome Skills** (Release {metadata['version']}) is a large, installable "
                 f"skill library for AI coding assistants. It packages {metadata['total_skills_label']} reusable "
                 "`SKILL.md` playbooks, specialized plugins, bundles, workflows, generated catalogs, and a CLI "
-                "installer so Claude Code, Codex CLI, Cursor, Gemini CLI, Antigravity, and similar tools can "
+                "installer so Claude Code, Codex CLI, Autohand Code, Cursor, Gemini CLI, Antigravity, and similar tools can "
                 "reuse proven operating instructions instead of one-off prompts."
             ),
         ),
@@ -179,6 +245,29 @@ def sync_readme_copy(content: str, metadata: dict) -> str:
     for pattern, replacement in replacements:
         content, _ = replace_if_present(content, pattern, replacement)
 
+    compact_readme = re.search(r"^Agentic Awesome Skills is a library of \d[\d,]*\+", content, re.MULTILINE)
+    if compact_readme:
+        content = re.sub(
+            r"(--package=agentic-awesome-skills@)" + VERSION_TOKEN_PATTERN,
+            rf"\g<1>{version}",
+            content,
+        )
+        content = re.sub(
+            r"(--release )" + VERSION_TOKEN_PATTERN,
+            rf"\g<1>{version}",
+            content,
+        )
+
+    core_guide_url = (
+        "https://github.com/sickn33/agentic-awesome-skills/"
+        f"blob/v{version}/docs/users/aas-core.md"
+    )
+    content = re.sub(
+        r"https://github\.com/sickn33/agentic-awesome-skills/blob/(?:main|v[^/]+)/docs/users/aas-core\.md",
+        core_guide_url,
+        content,
+    )
+
     return content
 
 
@@ -186,9 +275,144 @@ def sync_getting_started(content: str, metadata: dict) -> str:
     content, _ = replace_if_present(
         content,
         GETTING_STARTED_TITLE_RE,
-        f"# Getting Started with Antigravity Awesome Skills (V{metadata['version']})",
+        "# Getting Started with AAS Core",
+    )
+    version = metadata["version"]
+    content = re.sub(
+        r"In release " + VERSION_TOKEN_PATTERN,
+        f"In release {version}",
+        content,
+    )
+    content = re.sub(
+        r"The " + VERSION_TOKEN_PATTERN + r" installer requires",
+        f"The {version} installer requires",
+        content,
+    )
+    content = re.sub(
+        r"(--branch )v" + VERSION_TOKEN_PATTERN,
+        rf"\g<1>v{version}",
+        content,
+    )
+    content = re.sub(
+        r"(aas-review-)v" + VERSION_TOKEN_PATTERN,
+        rf"\g<1>v{version}",
+        content,
+    )
+    content = re.sub(
+        r"(--pin )v" + VERSION_TOKEN_PATTERN,
+        rf"\g<1>v{version}",
+        content,
+    )
+    content = re.sub(
+        r"(agentic-awesome-skills@)" + VERSION_TOKEN_PATTERN,
+        rf"\g<1>{version}",
+        content,
+    )
+    content = re.sub(
+        r"(--release )" + VERSION_TOKEN_PATTERN,
+        rf"\g<1>{version}",
+        content,
+    )
+    content = re.sub(
+        r"^For this published release, the commit is `[0-9a-f]{40}`\. "
+        r"Inspect the selected trees before activation; use the direct installer for its destination and update checks\.$",
+        "Inspect the selected trees before activation. The Git tag and npm `gitHead` must agree with the release provenance; "
+        "use the direct installer for its destination and update checks.",
+        content,
+        flags=re.MULTILINE,
     )
     return content
+
+
+def render_agent_setup_block(host: str, version: str, phase: str) -> str:
+    """One command source for both agent guides; sync keeps release pins aligned."""
+    if host not in {"codex", "claude"}:
+        raise ValueError("Unsupported setup host")
+    prefix = f"npm exec --yes --ignore-scripts --package=agentic-awesome-skills@{version} --"
+    config = '$HOME/.codex/config.toml' if host == 'codex' else '$HOME/.claude.json'
+    configure = (f'{prefix} aas mcp configure \\\n'
+                 f'  --host {host} --scope user --version {version} \\\n'
+                 '  --config "$AAS_CONFIG" --cache-root "$AAS_CACHE" \\\n'
+                 '  --backup-dir "$AAS_BACKUP"')
+    if phase == 'preview':
+        command = (f'AAS_CONFIG="{config}"\n'
+                   'AAS_CACHE="$HOME/.cache/aas"\n'
+                   'AAS_BACKUP="$HOME/.aas-mcp-backups"\n'
+                   'mkdir -p "$(dirname "$AAS_CONFIG")"\n\n' + configure)
+    elif phase == 'approve':
+        command = 'AAS_APPROVAL="PASTE_THE_PREVIEW_APPROVAL_DIGEST"\n' + configure + ' \\\n  --approve "$AAS_APPROVAL"'
+    elif phase == 'plan':
+        command = ('AAS_PROJECT="$PWD"\n'
+                   'AAS_INTEGRITY="PASTE_RUNTIME_INTEGRITY_FROM_CONFIGURATION"\n\n'
+                   f'{prefix} aas stack validate --manifest "$AAS_PROJECT/aas-stack.json"\n\n'
+                   f'{prefix} aas stack plan \\\n'
+                   '  --manifest "$AAS_PROJECT/aas-stack.json" \\\n'
+                   f'  --target {host}:project --target-root "$AAS_PROJECT" \\\n'
+                   '  --cache-root "$AAS_CACHE" --runtime-integrity "$AAS_INTEGRITY" \\\n'
+                   '  --out "$AAS_PROJECT/aas-plan.json"')
+    elif phase == 'install':
+        command = (f'{prefix} aas stack install-preview \\\n'
+                   '  --manifest "$AAS_PROJECT/aas-stack.json" --cache-root "$AAS_CACHE" \\\n'
+                   f'  --destination "$AAS_PROJECT/{".agents" if host == "codex" else ".claude"}/skills"')
+    else:
+        raise ValueError("Unsupported setup phase")
+    return '```bash\n' + command + '\n```'
+
+
+def sync_agent_setup_guide(content: str, metadata: dict) -> str:
+    pattern = re.compile(
+        r'(<!-- aas-agent-setup:(codex|claude):(preview|approve|plan|install) -->)'
+        r'.*?(<!-- /aas-agent-setup -->)', re.DOTALL,
+    )
+    return pattern.sub(lambda match: match[1] + '\n' + render_agent_setup_block(
+        match[2], metadata['version'], match[3],
+    ) + '\n' + match[4], content)
+
+
+def sync_aas_core_guide(content: str, metadata: dict) -> str:
+    if metadata["core_included"]:
+        content = re.sub(
+            r"--package=agentic-awesome-skills@(?:X\.Y\.Z|[^\s\\]+)",
+            f"--package=agentic-awesome-skills@{metadata['version']}",
+            content,
+            count=1,
+        )
+    return content.replace(
+        "searchable, readable, selectable, and usable",
+        "searchable, readable, and available for agent selection",
+    )
+
+
+def sync_web_index_shell(content: str, metadata: dict) -> str:
+    skill_label = metadata["total_skills_label"]
+    return sync_regex_text(
+        content,
+        [
+            (r"\d[\d,]*\+ installable agentic skills", f"{skill_label} installable agentic skills"),
+            (r"\d[\d,]*\+ AI coding skills", f"{skill_label} AI coding skills"),
+            (r"backed by \d[\d,]*\+ skills", f"backed by {skill_label} skills"),
+            (r"\d[\d,]*\+ cataloged skills", f"{skill_label} cataloged skills"),
+        ],
+    )
+
+
+def sync_llms_text(content: str, metadata: dict) -> str:
+    skill_label = metadata["total_skills_label"]
+    return sync_regex_text(
+        content,
+        [
+            (r"(?m)^- Current release: V[^\n]+$", f"- Current release: V{metadata['version']}."),
+            (r"Release boundary: .*", core_release_boundary(metadata)),
+            (r"\d[\d,]*\+ agentic SKILL\.md playbooks", f"{skill_label} agentic SKILL.md playbooks"),
+            (r"Skill count: \d[\d,]*\+\.", f"Skill count: {skill_label}."),
+            (r"\d[\d,]*\+ reusable SKILL\.md playbooks", f"{skill_label} reusable SKILL.md playbooks"),
+            (r"\d[\d,]*\+ skill catalog", f"{skill_label} skill catalog"),
+            (
+                r"Catalog access: (?:all \d[\d,]* current skills|every current catalog skill) remain individually searchable, readable, and selectable\.",
+                "Catalog access: every current catalog skill remains individually searchable, readable, and selectable.",
+            ),
+        ],
+    )
 
 
 def sync_bundles_doc(content: str, metadata: dict, base_dir: str | Path | None = None) -> str:
@@ -206,7 +430,7 @@ def sync_bundles_doc(content: str, metadata: dict, base_dir: str | Path | None =
     content, _ = replace_if_present(
         content,
         BUNDLES_FOOTER_RE,
-        f"_Last updated: March 2026 | Total Skills: {metadata['total_skills_label']} | Total Bundles: {bundle_count}_",
+        f"_Last updated: June 2026 | Total Skills: {metadata['total_skills_label']} | Total Bundles: {bundle_count}_",
     )
     return content
 
@@ -316,6 +540,11 @@ def sync_curated_docs(base_dir: str, metadata: dict, dry_run: bool) -> int:
     updated_files = 0
     updated_files += int(update_text_file(root / "README.md", sync_readme_copy, metadata, dry_run))
     updated_files += int(update_text_file(root / "docs" / "users" / "getting-started.md", sync_getting_started, metadata, dry_run))
+    updated_files += int(update_text_file(root / "docs" / "users" / "aas-core.md", sync_aas_core_guide, metadata, dry_run))
+    for slug in ["codex-cli-skills", "claude-code-skills"]:
+        updated_files += int(update_text_file(root / "docs" / "users" / f"{slug}.md", sync_agent_setup_guide, metadata, dry_run))
+    updated_files += int(update_text_file(root / "apps" / "web-app" / "index.html", sync_web_index_shell, metadata, dry_run))
+    updated_files += int(update_text_file(root / "apps" / "web-app" / "public" / "llms.txt", sync_llms_text, metadata, dry_run))
     updated_files += int(
         update_text_file(
             root / "docs" / "users" / "bundles.md",
@@ -345,8 +574,8 @@ def update_package_description(base_dir: str, metadata: dict, dry_run: bool) -> 
         content = file.read()
 
     new_description = (
-        f"{metadata['total_skills_label']} agentic skills for Claude Code, Gemini CLI, "
-        "Cursor, Antigravity & more. Installer CLI."
+        "AAS Core: complete local skill discovery, agent-owned selection, stack validation, and planning, "
+        f"backed by {metadata['total_skills_label']} agentic skills."
     )
     updated_content = ABOUT_DESCRIPTION_RE.sub(
         f'"description": "{new_description}"', content, count=1

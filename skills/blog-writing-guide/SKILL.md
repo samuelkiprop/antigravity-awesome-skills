@@ -1,7 +1,7 @@
 ---
 name: blog-writing-guide
 description: "This skill enforces Sentry's blog writing standards across every post — whether you're helping an engineer write their first blog post or a marketer draft a product announcement."
-risk: unknown
+risk: critical
 source: community
 date_added: '2026-03-06'
 ---
@@ -162,7 +162,14 @@ Run through both checklists:
 
 When providing feedback, be specific and constructive. Quote the weak passage, explain why it's weak, and rewrite it to show the standard.
 
+## Example
+
+**User request:**
+
+> Draft or edit a Sentry blog post.
+
 ## Limitations
+- This imported guide is not proof of current official Sentry policy or authorization to speak/publish for Sentry. Preserve actual authorship and obtain the intended author’s approval; sample benchmarks and story openings are examples, never facts to copy into a post.
 - Use this skill only when the task clearly matches the scope described above.
 - Do not treat the output as a substitute for environment-specific validation, testing, or expert review.
 - Stop and ask for clarification if required inputs, permissions, safety boundaries, or success criteria are missing.

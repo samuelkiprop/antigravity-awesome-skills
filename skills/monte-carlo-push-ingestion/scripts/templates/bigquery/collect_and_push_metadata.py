@@ -22,6 +22,7 @@ import os
 
 from collect_metadata import collect
 from push_metadata import push, _BATCH_SIZE
+from _safe_paths import safe_output_json_path
 
 
 def main() -> None:
@@ -29,7 +30,7 @@ def main() -> None:
     parser.add_argument("--project-id", default=os.getenv("BIGQUERY_PROJECT_ID"))  # ← SUBSTITUTE
     parser.add_argument("--resource-uuid", default=os.getenv("MCD_RESOURCE_UUID"))
     parser.add_argument("--key-id", default=os.getenv("MCD_INGEST_ID"))
-    parser.add_argument("--key-token", default=os.getenv("MCD_INGEST_TOKEN"))
+    parser.add_argument("--key-token", choices=[], default=os.getenv("MCD_INGEST_TOKEN"))
     parser.add_argument("--output-file", default="metadata_output.json")
     parser.add_argument("--push-result-file", default="metadata_push_result.json")
     parser.add_argument(
@@ -44,20 +45,23 @@ def main() -> None:
     if missing:
         parser.error(f"Missing required arguments/env vars: {missing}")
 
+    output_path = str(safe_output_json_path(args.output_file))
+    push_result_path = str(safe_output_json_path(args.push_result_file))
+
     # Step 1: Collect
     collect(
         project_id=args.project_id,
-        output_file=args.output_file,
+        output_file=output_path,
     )
 
     # Step 2: Push
     push(
-        input_file=args.output_file,
+        input_file=output_path,
         resource_uuid=args.resource_uuid,
         key_id=args.key_id,
         key_token=args.key_token,
         batch_size=args.batch_size,
-        output_file=args.push_result_file,
+        output_file=push_result_path,
     )
 
 

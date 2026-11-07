@@ -5,7 +5,7 @@ description: >
   "X vs Y" layouts, "alternatives to X" pages, feature matrices, schema markup,
   and conversion optimization. Use when user says "comparison page", "vs page",
   "alternatives page", "competitor comparison", or "X vs Y".
-risk: unknown
+risk: critical
 source: "https://github.com/AgriciDaniel/claude-seo"
 date_added: "2026-03-21"
 user-invokable: true
@@ -231,3 +231,5 @@ competitive intent keywords with accurate, structured content.
 - Use this skill only when the task clearly matches the scope described above.
 - Do not treat the output as a substitute for environment-specific validation, testing, or expert review.
 - Stop and ask for clarification if required inputs, permissions, safety boundaries, or success criteria are missing.
+
+Do not invent search volumes, ratings, testimonials or comparison results. `aggregateRating` requires genuine eligible review data for the actual entity/page; a list of competing products or self-serving comparison does not automatically qualify. Distinguish measured keyword data with source/date from editorial estimates, and validate current Google structured-data eligibility before implementation.

@@ -1,7 +1,7 @@
 ---
 name: content-strategy
 description: "Plan a content strategy, topic clusters, editorial roadmap, and content mix for traffic, authority, and lead generation. Use when deciding what to publish, what topics to prioritize, or how to structure a content program."
-risk: unknown
+risk: critical
 source: "https://github.com/coreyhaines31/marketingskills"
 date_added: "2026-03-21"
 metadata:
@@ -319,7 +319,7 @@ Score each idea on four factors:
 
 | Idea | Customer Impact (40%) | Content-Market Fit (30%) | Search Potential (20%) | Resources (10%) | Total |
 |------|----------------------|-------------------------|----------------------|-----------------|-------|
-| Topic A | 8 | 9 | 7 | 6 | 8.0 |
+| Topic A | 8 | 9 | 7 | 6 | 7.9 |
 | Topic B | 6 | 7 | 9 | 8 | 7.1 |
 
 ---

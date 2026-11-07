@@ -1,4 +1,6 @@
+.env.local
 node_modules/
+/.venv/
 __pycache__/
 .ruff_cache/
 .worktrees/
@@ -17,6 +19,11 @@ antigravity-awesome-skills-*.tgz
 .release-clone-*/
 data/node_modules
 
+# Generated skill registry outputs (maintainer-owned, never committed in PRs)
+data/drift-baseline.json
+data/registry-report.json
+data/scores.json
+
 # Temporary analysis and report files
 *_REPORT.md
 *_ANALYSIS*.md
@@ -30,6 +37,13 @@ similar_skills_*.json
 remaining_*.json
 html_*.json
 
+# Local remediation planning artefacts (keep durable notes under .codex/)
+/LOCAL_SECURITY_SCAN_GOAL.md
+/LOCAL_SECURITY_SCAN_WORKLOG.md
+/SNYK_REMEDIATION_GOAL.md
+/SNYK_REMEDIATION_WORKLOG.md
+/TRADEMARK_REMEDIATION_GOAL.md
+
 # Temporary analysis scripts (tools/scripts/)
 tools/scripts/*voltagent*.py
 tools/scripts/*html*.py
@@ -42,8 +56,14 @@ validation-baseline.json
 # Web app generated assets (from npm run app:setup)
 apps/web-app/public/skills/
 apps/web-app/public/skills.json
+apps/web-app/public/api/info.json
 
 skills/spline-3d-integration/*.zip
 
 # Temporary plugin staging directories
 plugins/.antigravity-awesome-skills.staging-*/
+.vercel
+
+# Local Turborepo artifacts (never publication inputs)
+.turbo/
+apps/web-app/.ci-cache/

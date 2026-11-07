@@ -6,12 +6,23 @@ Based on the MCP server implementation
 """
 
 import json
-import argparse
-import uuid
 import os
+import tempfile
+import argparse
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+
+sys.path.insert(0, str(Path(__file__).parent))
+
+from config import DATA_DIR, LIBRARY_FILE, ensure_private_state
+from input_safety import (
+    notebook_id_from_name,
+    validate_metadata_list,
+    validate_metadata_text,
+    validate_notebook_url,
+)
 
 
 class NotebookLibrary:
@@ -19,12 +30,9 @@ class NotebookLibrary:
 
     def __init__(self):
         """Initialize the notebook library"""
-        # Store data within the skill directory
-        skill_dir = Path(__file__).parent.parent
-        self.data_dir = skill_dir / "data"
-        self.data_dir.mkdir(parents=True, exist_ok=True)
-
-        self.library_file = self.data_dir / "library.json"
+        ensure_private_state()
+        self.data_dir = DATA_DIR
+        self.library_file = LIBRARY_FILE
         self.notebooks: Dict[str, Dict[str, Any]] = {}
         self.active_notebook_id: Optional[str] = None
 
@@ -37,13 +45,27 @@ class NotebookLibrary:
             try:
                 with open(self.library_file, 'r') as f:
                     data = json.load(f)
+                    if not isinstance(data, dict) or not isinstance(data.get('notebooks', {}), dict):
+                        raise ValueError("Invalid library structure")
                     self.notebooks = data.get('notebooks', {})
+                    for notebook_id, notebook in self.notebooks.items():
+                        if not isinstance(notebook, dict):
+                            raise ValueError("Invalid notebook record")
+                        validate_metadata_text(notebook_id, "id", 64)
+                        if notebook.get("id") != notebook_id:
+                            raise ValueError("Notebook ID mismatch")
+                        validate_notebook_url(notebook.get('url', ''))
+                        validate_metadata_text(notebook.get('name', ''), 'name', 120)
+                        validate_metadata_text(notebook.get('description', ''), 'description', 1000)
+                        for field in ('topics', 'tags', 'use_cases'):
+                            notebook[field] = validate_metadata_list(notebook.get(field, []), field)
+                        if not isinstance(notebook.get('use_count', 0), int):
+                            raise ValueError("Invalid use count")
                     self.active_notebook_id = data.get('active_notebook_id')
                     print(f"📚 Loaded library with {len(self.notebooks)} notebooks")
             except Exception as e:
                 print(f"⚠️ Error loading library: {e}")
-                self.notebooks = {}
-                self.active_notebook_id = None
+                raise ValueError("Library could not be loaded; preserve it and restore a reviewed backup") from e
         else:
             self._save_library()
 
@@ -55,10 +77,17 @@ class NotebookLibrary:
                 'active_notebook_id': self.active_notebook_id,
                 'updated_at': datetime.now().isoformat()
             }
-            with open(self.library_file, 'w') as f:
-                json.dump(data, f, indent=2)
+            ensure_private_state()
+            fd, temporary = tempfile.mkstemp(prefix=".library-", dir=self.data_dir)
+            try:
+                with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=2)
+                    f.write('\n')
+                os.replace(temporary, self.library_file)
+            finally:
+                Path(temporary).unlink(missing_ok=True)
         except Exception as e:
-            print(f"❌ Error saving library: {e}")
+            raise OSError("Could not save NotebookLM library") from e
 
     def add_notebook(
         self,
@@ -85,8 +114,16 @@ class NotebookLibrary:
         Returns:
             The created notebook object
         """
-        # Generate ID from name
-        notebook_id = name.lower().replace(' ', '-').replace('_', '-')
+        url = validate_notebook_url(url)
+        name = validate_metadata_text(name, "name", 120)
+        description = validate_metadata_text(description, "description", 1000)
+        topics = validate_metadata_list(topics, "topics", required=True)
+        content_types = validate_metadata_list(content_types, "content_types")
+        use_cases = validate_metadata_list(use_cases, "use_cases")
+        tags = validate_metadata_list(tags, "tags")
+
+        # Generate a portable single-component ID from the validated name.
+        notebook_id = notebook_id_from_name(name)
 
         # Check for duplicates
         if notebook_id in self.notebooks:
@@ -99,9 +136,9 @@ class NotebookLibrary:
             'name': name,
             'description': description,
             'topics': topics,
-            'content_types': content_types or [],
-            'use_cases': use_cases or [],
-            'tags': tags or [],
+            'content_types': content_types,
+            'use_cases': use_cases,
+            'tags': tags,
             'created_at': datetime.now().isoformat(),
             'updated_at': datetime.now().isoformat(),
             'use_count': 0,
@@ -175,19 +212,19 @@ class NotebookLibrary:
 
         # Update fields if provided
         if name is not None:
-            notebook['name'] = name
+            notebook['name'] = validate_metadata_text(name, "name", 120)
         if description is not None:
-            notebook['description'] = description
+            notebook['description'] = validate_metadata_text(description, "description", 1000)
         if topics is not None:
-            notebook['topics'] = topics
+            notebook['topics'] = validate_metadata_list(topics, "topics", required=True)
         if content_types is not None:
-            notebook['content_types'] = content_types
+            notebook['content_types'] = validate_metadata_list(content_types, "content_types")
         if use_cases is not None:
-            notebook['use_cases'] = use_cases
+            notebook['use_cases'] = validate_metadata_list(use_cases, "use_cases")
         if tags is not None:
-            notebook['tags'] = tags
+            notebook['tags'] = validate_metadata_list(tags, "tags")
         if url is not None:
-            notebook['url'] = url
+            notebook['url'] = validate_notebook_url(url)
 
         notebook['updated_at'] = datetime.now().isoformat()
 

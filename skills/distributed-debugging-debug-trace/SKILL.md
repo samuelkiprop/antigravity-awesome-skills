@@ -1,7 +1,7 @@
 ---
 name: distributed-debugging-debug-trace
 description: "You are a debugging expert specializing in setting up comprehensive debugging environments, distributed tracing, and diagnostic tools. Configure debugging workflows, implement tracing solutions, and establish troubleshooting practices for development and production environments."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -41,6 +41,10 @@ $ARGUMENTS
 
 - Avoid enabling verbose tracing in production without safeguards.
 - Redact secrets and PII from logs and traces.
+
+## Deployment and evidence boundary
+
+The playbook contains incomplete illustrative classes, undefined helper methods/imports and version-specific OpenTelemetry/Sentry configuration, not a ready-to-run debug stack. Inspect pinned APIs and existing instrumentation before adapting it; avoid duplicate server spans and extract/propagate trace context through supported instrumentation. Debuggers can execute code and heap/core snapshots can expose every in-memory secret. Keep inspectors and dashboards loopback-only behind approved authenticated tunnels, cap snapshot duration/disk/overhead, redact before export and remove temporary access after use. Production pause/profile/telemetry changes require scoped authorization and rollback. Do not replace process-global console methods per request or return sensitive diagnostics in response headers. A successful config parse does not establish end-to-end trace coverage or application correctness.
 
 ## Resources
 

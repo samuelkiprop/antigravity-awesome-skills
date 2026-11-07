@@ -9,8 +9,9 @@ allowed-tools:
   - Glob
   - Grep
   - WebFetch
-risk: unknown
+risk: critical
 source: community
+date_added: "2026-03-06"
 ---
 
 # Semgrep Rule Creator
@@ -49,7 +50,7 @@ When writing Semgrep rules, reject these common shortcuts:
 pattern: $FUNC(...)
 
 # GOOD: Specific dangerous function
-pattern: eval(...)
+pattern: eval(...) # security-allowlist: Semgrep sink pattern
 ```
 
 **Missing safe cases in tests** - leads to undetected false positives:
@@ -101,7 +102,7 @@ This skill guides creation of Semgrep rules that detect security vulnerabilities
 - **Taint mode** (prioritize): Data flow issues where untrusted input reaches dangerous sinks
 - **Pattern matching**: Simple syntactic patterns without data flow requirements
 
-**Why prioritize taint mode?** Pattern matching finds syntax but misses context. A pattern `eval($X)` matches both `eval(user_input)` (vulnerable) and `eval("safe_literal")` (safe). Taint mode tracks data flow, so it only alerts when untrusted data actually reaches the sink—dramatically reducing false positives for injection vulnerabilities.
+**Why prioritize taint mode?** Pattern matching finds syntax but misses context. A pattern `eval($X)` matches both `eval(user_input)` (vulnerable) and `eval("safe_literal")` (safe). Taint mode tracks data flow, so it only alerts when untrusted data actually reaches the sink—dramatically reducing false positives for injection vulnerabilities. <!-- security-allowlist: Semgrep taint-mode explanation -->
 
 **Iterating between approaches:** It's okay to experiment. If you start with taint mode and it's not working well (e.g., taint doesn't propagate as expected, too many false positives/negatives), switch to pattern matching. Conversely, if pattern matching produces too many false positives on safe cases, try taint mode instead. The goal is a working rule—not rigid adherence to one approach.
 
@@ -119,24 +120,28 @@ rules:
   - id: insecure-eval
     languages: [python]
     severity: HIGH
-    message: User input passed to eval() allows code execution
+    message: User input passed to eval() allows code execution # security-allowlist: Semgrep finding message
     mode: taint
     pattern-sources:
       - pattern: request.args.get(...)
     pattern-sinks:
-      - pattern: eval(...)
+      - pattern: eval(...) # security-allowlist: Semgrep sink pattern
 ```
 
 Test file (`insecure-eval.py`):
 ```python
 # ruleid: insecure-eval
-eval(request.args.get('code'))
+eval(request.args.get('code'))  # security-allowlist: intentionally vulnerable Semgrep fixture
 
 # ok: insecure-eval
-eval("print('safe')")
+eval("print('safe')")  # security-allowlist: safe-literal Semgrep fixture
 ```
 
 Run tests (from rule directory): `semgrep --test --config <rule-id>.yaml <rule-id>.<ext>`
+
+## Supporting scope
+
+Only SKILL.md is bundled; quick-reference.md and workflow.md are unavailable. Use the inline checklist plus current official rule/test documentation, report missing support and never claim an absent workflow was followed. Pattern snippets omitting sources/languages/message are fragments, not complete standalone rules.
 
 ## Quick Reference
 
@@ -160,7 +165,7 @@ Semgrep Rule Progress:
 
 ## Documentation
 
-**REQUIRED**: Before writing any rule, use WebFetch to read **all** of these 4 links with Semgrep documentation:
+**REQUIRED**: Before writing any rule, use WebFetch to read the relevant current documentation from these links with Semgrep documentation:
 
 1. [Rule Syntax](https://semgrep.dev/docs/writing-rules/rule-syntax)
 2. [Pattern Syntax](https://semgrep.dev/docs/writing-rules/pattern-syntax)

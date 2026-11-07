@@ -16,6 +16,10 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import os
+import stat
+from contextlib import contextmanager
+from source_io import private_directory
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -116,19 +120,94 @@ CREATE INDEX IF NOT EXISTS idx_history_time      ON score_history (recorded_at);
 CREATE INDEX IF NOT EXISTS idx_action_log_time   ON action_log (created_at);
 """
 
+_SKILL_SNAPSHOT_COLUMNS = frozenset({
+    "audit_run_id", "skill_name", "skill_path", "version", "file_count",
+    "line_count", "overall_score", "code_quality", "security", "performance",
+    "governance", "documentation", "dependencies", "raw_metrics", "created_at",
+})
+_FINDING_COLUMNS = frozenset({
+    "audit_run_id", "skill_name", "dimension", "severity", "category", "title",
+    "description", "file_path", "line_number", "recommendation", "effort",
+    "impact", "created_at",
+})
+_RECOMMENDATION_COLUMNS = frozenset({
+    "audit_run_id", "suggested_name", "rationale", "capabilities", "priority",
+    "skill_md_draft", "created_at",
+})
+_SKILL_SNAPSHOT_INSERT_COLUMNS = (
+    "audit_run_id", "skill_name", "skill_path", "version", "file_count",
+    "line_count", "overall_score", "code_quality", "security", "performance",
+    "governance", "documentation", "dependencies", "raw_metrics",
+)
+_FINDING_INSERT_COLUMNS = (
+    "audit_run_id", "skill_name", "dimension", "severity", "category", "title",
+    "description", "file_path", "line_number", "recommendation", "effort",
+    "impact",
+)
+_RECOMMENDATION_INSERT_COLUMNS = (
+    "audit_run_id", "suggested_name", "rationale", "capabilities", "priority",
+    "skill_md_draft",
+)
+_INSERT_SKILL_SNAPSHOT_SQL = """
+INSERT INTO skill_snapshots (
+    audit_run_id, skill_name, skill_path, version, file_count, line_count,
+    overall_score, code_quality, security, performance, governance,
+    documentation, dependencies, raw_metrics
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+"""
+_INSERT_FINDING_SQL = """
+INSERT INTO findings (
+    audit_run_id, skill_name, dimension, severity, category, title,
+    description, file_path, line_number, recommendation, effort, impact
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+"""
+_INSERT_RECOMMENDATION_SQL = """
+INSERT INTO skill_recommendations (
+    audit_run_id, suggested_name, rationale, capabilities, priority, skill_md_draft
+) VALUES (?, ?, ?, ?, ?, ?)
+"""
+
+
+def _quote_identifier(name: str, allowed: frozenset[str]) -> str:
+    if name not in allowed:
+        raise ValueError(f"Invalid column name: {name}")
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _filter_allowed_columns(data: Dict[str, Any], allowed: frozenset[str]) -> Dict[str, Any]:
+    filtered = {k: v for k, v in data.items() if k in allowed}
+    if not filtered:
+        raise ValueError("No valid columns provided")
+    return filtered
+
 
 class Database:
     def __init__(self, db_path: Path = DB_PATH):
         self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        private_directory(self.db_path.parent)
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self):
+        private_directory(self.db_path.parent)
+        for candidate in [self.db_path, Path(str(self.db_path) + "-wal"), Path(str(self.db_path) + "-shm")]:
+            if candidate.is_symlink(): raise OSError("Symlinked database or sidecar refused")
+            if candidate.exists():
+                info = candidate.stat()
+                if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+                    raise OSError("Unsafe database or sidecar file")
+        fd = os.open(self.db_path, os.O_WRONLY | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        os.close(fd)
+        os.chmod(self.db_path, 0o600)
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA synchronous=NORMAL")
-        conn.execute("PRAGMA foreign_keys=ON")
-        return conn
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=NORMAL")
+            conn.execute("PRAGMA foreign_keys=ON")
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def init(self) -> None:
         """Cria tabelas e indices se nao existirem."""
@@ -182,15 +261,14 @@ class Database:
 
     def insert_skill_snapshot(self, run_id: int, data: Dict[str, Any]) -> int:
         """Insere snapshot de uma skill. Retorna o id."""
+        data = dict(data)
         data["audit_run_id"] = run_id
         if "raw_metrics" in data and isinstance(data["raw_metrics"], dict):
             data["raw_metrics"] = json.dumps(data["raw_metrics"], ensure_ascii=False)
-        keys = list(data.keys())
-        placeholders = ", ".join(f":{k}" for k in keys)
-        columns = ", ".join(keys)
-        sql = f"INSERT INTO skill_snapshots ({columns}) VALUES ({placeholders})"
+        data = _filter_allowed_columns(data, _SKILL_SNAPSHOT_COLUMNS)
+        values = [data.get(column) for column in _SKILL_SNAPSHOT_INSERT_COLUMNS]
         with self._connect() as conn:
-            cursor = conn.execute(sql, data)
+            cursor = conn.execute(_INSERT_SKILL_SNAPSHOT_SQL, values)
             return cursor.lastrowid
 
     def get_snapshots_for_run(self, run_id: int) -> List[Dict[str, Any]]:
@@ -206,7 +284,7 @@ class Database:
         with self._connect() as conn:
             row = conn.execute(
                 "SELECT * FROM skill_snapshots WHERE skill_name = ? "
-                "ORDER BY created_at DESC LIMIT 1",
+                "ORDER BY created_at DESC, id DESC LIMIT 1",
                 [skill_name],
             ).fetchone()
         return dict(row) if row else None
@@ -215,13 +293,12 @@ class Database:
 
     def insert_finding(self, run_id: int, data: Dict[str, Any]) -> int:
         """Insere um finding. Retorna o id."""
+        data = dict(data)
         data["audit_run_id"] = run_id
-        keys = list(data.keys())
-        placeholders = ", ".join(f":{k}" for k in keys)
-        columns = ", ".join(keys)
-        sql = f"INSERT INTO findings ({columns}) VALUES ({placeholders})"
+        data = _filter_allowed_columns(data, _FINDING_COLUMNS)
+        values = [data.get(column) for column in _FINDING_INSERT_COLUMNS]
         with self._connect() as conn:
-            cursor = conn.execute(sql, data)
+            cursor = conn.execute(_INSERT_FINDING_SQL, values)
             return cursor.lastrowid
 
     def insert_findings_batch(self, run_id: int, findings: List[Dict[str, Any]]) -> int:
@@ -266,15 +343,14 @@ class Database:
     # -- Skill Recommendations -------------------------------------------------
 
     def insert_recommendation(self, run_id: int, data: Dict[str, Any]) -> int:
+        data = dict(data)
         data["audit_run_id"] = run_id
         if "capabilities" in data and isinstance(data["capabilities"], list):
             data["capabilities"] = json.dumps(data["capabilities"], ensure_ascii=False)
-        keys = list(data.keys())
-        placeholders = ", ".join(f":{k}" for k in keys)
-        columns = ", ".join(keys)
-        sql = f"INSERT INTO skill_recommendations ({columns}) VALUES ({placeholders})"
+        data = _filter_allowed_columns(data, _RECOMMENDATION_COLUMNS)
+        values = [data.get(column) for column in _RECOMMENDATION_INSERT_COLUMNS]
         with self._connect() as conn:
-            cursor = conn.execute(sql, data)
+            cursor = conn.execute(_INSERT_RECOMMENDATION_SQL, values)
             return cursor.lastrowid
 
     def get_recommendations_for_run(self, run_id: int) -> List[Dict[str, Any]]:
@@ -300,7 +376,7 @@ class Database:
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT * FROM score_history WHERE skill_name = ? AND dimension = ? "
-                "ORDER BY recorded_at DESC LIMIT ?",
+                "ORDER BY recorded_at DESC, id DESC LIMIT ?",
                 [skill_name, dimension, limit],
             ).fetchall()
         return [dict(r) for r in rows]

@@ -1,238 +1,348 @@
 ---
 name: vibecode-production-qa-validator
-description: "End-to-end production QA, build verification, and launch-readiness checklist for fullstack Next.js apps. Covers TypeScript, linting, tests, build, SEO tags, route regression, and sitemap validation."
+description: "13-phase production QA for fullstack Next.js apps: build verification, SEO tags, OG images, favicon, route regression, API auth, page speed, lazy load, vulnerability scan, UI/UX cards, error boundaries, database, secure rendering, and cleanup."
 category: devops
-risk: safe
+risk: critical
 source: self
 source_type: self
 date_added: "2026-05-31"
 author: Whoisabhishekadhikari
-tags: [qa, testing, nextjs, production, build-validation, deployment, seo]
-tools: [claude, cursor, gemini, claude-code]
-version: 1.0.0
+tags: [qa, nextjs, production, deployment, seo, authentication, api, performance, favicon, cleanup, lighthouse, database, security, ui-ux]
+tools: [claude, cursor, gemini, claude-code, opencode]
+version: 2.0.0
 ---
 
-# Production QA Validator Skill
+# Production QA Validator
 
-The end-to-end launch checklist for fullstack Next.js apps. Run this before every production deployment or after any major change.
-
----
+Use the applicable phases in order and record evidence for each as passed, failed, incomplete or not applicable with a reason. Missing tooling, no tests, failed network calls and unperformed manual checks are incomplete, never success. Confirm project scripts, versions, approved URLs/methods, request limits, credentials and mutation boundaries before running. Builds/tests/lint/plugins can execute project code, write caches or reach services; they are not inherently read-only. Do not install hooks or overwrite existing config without authorization.
 
 ## When to Use
 
-- Use before deploying a vibe-coded or fast-built app to production.
-- Use when validating build output, SEO tags, sitemap routes, API routes, git diff cleanliness, and post-deploy smoke checks.
-- Use when you need a concrete definition of done for release readiness across code, runtime behavior, and public URLs.
-
----
-
-## The Full Validation Command Sequence
-
-Run in order — stop and fix on any failure before continuing:
+- Use before shipping or promoting a fullstack Next.js app to production.
+- Use after large UI, SEO, auth, API, database, or dependency changes need a concrete launch-readiness pass.
+- Use when you need a compact command-driven checklist for build, route, metadata, performance, security, and cleanup checks.
 
 ```bash
-# 1. TypeScript — catches type errors and broken imports
-npx tsc --noEmit
-
-# 2. Custom validation scripts (if present)
-npm run validate 2>/dev/null || echo "No validate script"
-
-# 3. Canonical/SEO linting (if present)
-npm run lint:canon 2>/dev/null || echo "No canon lint"
-npm run lint:anchors 2>/dev/null || echo "No anchor lint"  
-npm run lint:links 2>/dev/null || echo "No link lint"
-
-# 4. ESLint
-npx eslint . --ext .js,.jsx,.ts,.tsx --max-warnings 0
-
-# 5. Tests
-npm test -- --runInBand --passWithNoTests
-
-# 6. Production build — the final arbiter
-npm run build
+export PROD_URL="https://yourdomain.com"
+export QA_AUTH_HEADER=""       # optional: "Bearer eyJ..."
+export PAGESPEED_API_KEY=""    # optional: for auto PageSpeed API
 ```
-
-All 6 must pass before committing.
 
 ---
 
-## Reading the Build Output
+## Evidence and a Bounded Route Check
+
+The former consolidated `qa:*` runner returned successful exit codes after warnings, hid tool/network failures and inferred security from grep matches. It has been removed; a checklist is not an implemented automated gate. Use the project's actual checks and parse structured outputs. Keep raw logs private and redact secrets rather than echoing matched credential lines.
 
 ```bash
-npm run build 2>&1 | tee build.log
-
-# Check for errors
-grep -i "error\|failed\|cannot" build.log | grep -v "no errors"
-
-# Check static page count
-grep "Static pages\|○\|●" build.log | tail -5
+# Bash, approved staging target only; expect the exact documented status.
+qa_route() {
+  local route="$1" expected="$2" code
+  code=$(curl --silent --show-error --max-time 15 --connect-timeout 5 \
+    --output /dev/null --write-out '%{http_code}' "$PROD_URL$route") || return 1
+  printf '%s %s\n' "$code" "$route"
+  [ "$code" = "$expected" ]
+}
+qa_route / 200
+qa_route /api/protected 401  # choose401/403 from the actual contract
 ```
 
-### Route symbols explained
-
-| Symbol | Meaning | Expected? |
-|--------|---------|-----------|
-| `○` | Static (rendered at build time) | ✓ Good for most pages |
-| `●` | SSG (generated from `generateStaticParams`) | ✓ Good for dynamic pages |
-| `λ` | Serverless (dynamic, rendered on request) | ✓ APIs and truly dynamic pages only |
-| `⊕` | Partial prerender | ✓ Fine |
-
-If an important SEO page shows `λ` and should be static, add `generateStaticParams` or use `export const dynamic = 'force-static'`.
+Do not follow redirects carrying credentials to other origins. A status check proves only that response, not content, authorization, availability, SEO or a complete workflow. Auth probes need real configured endpoints and correct methods; never call logout/login mutations indiscriminately in production. Validate object/tenant isolation with owned synthetic accounts and explicit negative cases.
 
 ---
 
-## SEO Tags in Raw HTML Verification
+### Phase 1: Code Integrity
 
-Crawlers don't run JavaScript. Metadata must be in the raw HTML response.
+- [ ] The project's pinned typecheck script
+- [ ] The project's pinned lint script (flags differ by ESLint version)
+- [ ] `npm test  # use the actual runner; zero discovered tests is incomplete`
 
-```bash
-# Check a page's metadata
-curl -s https://www.yourdomain.com/blog/my-post | grep -i \
-  "og:title\|og:description\|og:image\|twitter:card\|canonical\|description"
 
-# Expected output should include all of these:
-# <meta property="og:title" content="..." />
-# <meta property="og:description" content="..." />
-# <meta property="og:image" content="https://..." />
-# <meta name="twitter:card" content="summary_large_image" />
-# <link rel="canonical" href="https://..." />
-# <meta name="description" content="..." />
-```
-
-If tags are missing from raw HTML: they're added by client-side JavaScript. Fix: move to `export const metadata` or `generateMetadata`.
 
 ---
 
-## Route Regression Testing
+### Phase 2: Build Verification
 
-After any major change, verify all critical route types still return 200:
+- [ ] `npm run build` succeeds
+- [ ] Verify intended static/dynamic behavior; dynamic rendering is valid for many SEO pages
+- [ ] Build log has no errors
 
-```bash
-BASE="https://www.yourdomain.com"
 
-# Core pages
-for path in "/" "/about" "/contact" "/privacy" "/terms" "/faq"; do
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BASE$path")
-  echo "$STATUS $BASE$path"
-done
 
-# Sitemaps
-for path in "/sitemap.xml" "/robots.txt"; do
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BASE$path")
-  echo "$STATUS $BASE$path"
-done
-
-# Sample dynamic routes (test a few real slugs)
-for path in "/tools/keyword-density-checker" "/blog/my-post-slug"; do
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BASE$path")
-  echo "$STATUS $BASE$path"
-done
-```
-
-All should return `200`. Investigate anything returning `404`, `500`, or `301`/`302` when a direct URL was expected.
+| Symbol | Meaning |
+|--------|---------|
+| `○` | Static |
+| `●` | SSG |
+| `λ` | Dynamic/serverless |
+| `⊕` | Partial prerender |
 
 ---
 
-## Sitemap Validation
+### Phase 3: API Session & Authentication
 
-```bash
-# Fetch and validate sitemap XML
-curl -s https://www.yourdomain.com/sitemap.xml | python3 -c "
-import sys, xml.etree.ElementTree as ET
-try:
-    ET.parse(sys.stdin)
-    print('✓ Valid XML')
-except Exception as e:
-    print(f'✗ Invalid XML: {e}')
-"
+- [ ] Auth endpoints respond (login, session, logout)
+- [ ] Protected routes return 401/403
+- [ ] Session cookie: HttpOnly + Secure + SameSite
+- [ ] Cookie not expired, Path/Domain correct
+- [ ] No rate limiting bypass
 
-# Count URLs in sitemap
-curl -s https://www.yourdomain.com/sitemap.xml | grep -c "<loc>"
+
+
+---
+
+### Phase 4: Route Regression
+
+- [ ] Core pages, sitemap, robots.txt all 200
+- [ ] URLs use kebab-case, no duplicate slugs
+- [ ] robots.txt allows indexing
+- [ ] Sitemap XML valid, all URLs resolve 200
+
+
+
+---
+
+### Phase 5: SEO — Tags, Images, Favicon, Slugs
+
+- [ ] `<title>` 30–60 chars, unique per page
+- [ ] `<meta name="description">` in raw HTML
+- [ ] og:title matches `<title>`, og:url matches canonical
+- [ ] og:image uses the target platform's supported dimensions/format, absolute URL, loads 200
+- [ ] twitter:card = summary_large_image
+- [ ] Canonical self-referencing, no duplicates
+- [ ] `/favicon.ico` 200, apple-touch-icon present
+- [ ] `hreflang` tags if multilingual
+- [ ] JSON-LD structured data present
+- [ ] Slugs are stable/readable and preserve existing redirects; no arbitrary stop-word ban
+
+
+
+---
+
+### Phase 6: API Route Behavior
+
+- [ ] Correct status codes + Content-Type
+- [ ] Errors return consistent JSON `{ error, message }`
+- [ ] Response latency meets the measured route-specific SLO
+- [ ] CORS headers correct (if cross-origin)
+
+
+
+---
+
+### Phase 7: Git Hygiene
+
+- [ ] No secrets/credentials in diff
+- [ ] No `.next`/`node_modules` staged
+- [ ] Commit: `type(scope): message`
+
+
+
+---
+
+### Phase 8: Post-Deployment Smoke Test
+
+- [ ] Homepage 200, key pages 200
+- [ ] OG image loads 200
+- [ ] No console errors (manual)
+- [ ] Auth flow works (manual)
+
+
+
+---
+
+### Phase 9: Page Speed, Lazy Load & Bundles
+
+- [ ] Lighthouse ≥ 90 (Perf, A11y, SEO)
+- [ ] Record lab/field conditions; assess field LCP≤2.5s, INP≤200ms and CLS≤0.1 at the75th percentile
+- [ ] Below-fold images may lazy-load; prioritize the LCP/above-fold image
+- [ ] Dynamic imports for heavy components
+- [ ] Largest JS chunk < 200KB gzipped
+- [ ] `font-display: swap`, no FOIT
+- [ ] Total page weight < 1MB
+
+
+
+---
+
+### Phase 10: Cleanup & Vulnerability Scan
+
+- [ ] `npm prune`, `depcheck` — no unused deps
+- [ ] No console.log/debugger in staged code
+- [ ] `npm audit` — zero critical/high vulnerabilities
+- [ ] No eval/new Function/document.write
+- [ ] TODOs resolved
+
+
+
+---
+
+### Phase 11: UI/UX — Cards, Animation, Error Boundaries
+
+- [ ] Cards: equal height grid, no overlap, text ellipsis, responsive (1→2→3 col)
+- [ ] No horizontal scroll at any viewport (320–1440px)
+- [ ] Images: consistent `aspect-ratio` + `object-fit: cover`
+- [ ] Touch targets ≥ 44×44px
+- [ ] Animations use `transform`+`opacity` only (not layout props)
+- [ ] `prefers-reduced-motion` respected
+- [ ] Error boundaries at root + route level (`app/error.tsx`, `app/global-error.tsx`)
+- [ ] `app/not-found.tsx` and `app/loading.tsx` exist
+- [ ] All client fetches show loading + error + empty states
+- [ ] Buttons: hover, focus-visible, active, disabled, loading states
+- [ ] Forms prevent repeat submissions and server writes enforce atomic idempotency where needed
+
+
+
+---
+
+### Phase 12: Database & Data Layer
+
+- [ ] Connection pool configured (no starvation)
+- [ ] Schema in sync with migrations
+- [ ] Indexes and batching justified by actual query plans/workload; measure N+1
+- [ ] No hardcoded DB credentials in source
+- [ ] No raw SQL injection risk
+- [ ] No sensitive data leaked in API responses
+- [ ] Migrations are idempotent
+
+
+
+---
+
+### Phase 13: Secure Data Rendering
+
+- [ ] No secrets/tokens in client source or localStorage
+- [ ] Use framework escaping or context-appropriate sanitization for untrusted HTML; sanitization is not a universal safe sink
+- [ ] API errors don't leak stack traces
+- [ ] Enforce object/tenant authorization regardless of identifier format; UUIDs are not access control
+- [ ] User emails masked in UI
+- [ ] NEXT_PUBLIC_ vars contain no secrets
+
+
+
+---
+
+## Pre-Commit Hook
+
+Use the project's existing hook manager and preserve installed hooks. Configure only after authorization; local hooks can be bypassed and do not replace CI.
+
+
+
+---
+
+## CI/CD (GitHub Actions)
+
+Template only: select pinned compatible tools/actions, the actual test runner and explicit permissions. Do not enable production probes or pass secrets to untrusted PR code.
+
+```yaml
+name: QA
+on: [push, pull_request]
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm test # configure zero-test discovery to fail
+      - run: npm run build
 ```
 
 ---
 
-## API Route Testing
+## Best Practices
 
-```bash
-# Test API endpoints return expected content-type and status
-for path in "/api/health" "/api/tools"; do
-  RESULT=$(curl -s -o /dev/null -w "%{http_code} %{content_type}" "$BASE$path")
-  echo "$RESULT $path"
-done
-```
-
----
-
-## Pre-Commit Git Checklist
-
-Before committing:
-
-```bash
-# Review what's changed
-git diff --stat HEAD
-
-# Ensure no secrets or local-only files
-git diff HEAD | grep -i "password\|secret\|api_key\|localhost:3000" | grep "^+"
-
-# Confirm no build artifacts are staged
-git status | grep -E "\.next|node_modules"
-```
-
-Good commit message format:
-```text
-type(scope): brief description
-
-fix(seo): add canonical tags to all blog pages
-feat(tools): add keyword density checker page
-refactor(metadata): consolidate OG/Twitter tags into shared helper
-chore(cleanup): remove unused utils/oldHelper.js
-```
+| ✅ Do | ❌ Don't |
+|-------|----------|
+| Run full 13-phase flow before deploy | Skip typecheck or lint |
+| Set `PROD_URL` in profile/.envrc | Hardcode URLs in scripts |
+| OG images ≥ 1200×630 | Use small OG images |
+| Animate with `transform`+`opacity` | Animate width/height/top |
+| Show loading/error/empty states | Leave users on blank screens |
+| `prefers-reduced-motion` for animations | Force motion on all users |
+| HttpOnly + Secure cookies for tokens | localStorage for auth tokens |
+| Error boundaries at all levels | White screen on crash |
+| Database indexes + include/populate | N+1 queries in loops |
+| `npm audit` before deploy | Deploy with known vulns |
 
 ---
 
-## Post-Deployment Smoke Test
+## Common Pitfalls
 
-Run 5–10 minutes after deployment:
-
-```bash
-PROD="https://www.yourdomain.com"
-
-# Homepage loads
-curl -sI "$PROD" | grep -i "http\|status"
-
-# Key page loads
-curl -sI "$PROD/tools/keyword-density-checker" | grep "200\|301\|404"
-
-# No JS errors (requires manual browser check)
-# Open browser → Console → look for red errors
-
-# OG image loads
-curl -sI "$PROD/images/og/home.jpg" | grep -i "200\|content-type"
-```
+| Problem | Solution |
+|---------|----------|
+| OG tags missing in raw HTML | Use `export const metadata` in Next.js |
+| `Disallow: /` in robots.txt | Blocks all crawlers — use specific paths |
+| Cards different heights in grid | Use `display: grid` with equal-height rows, not flex |
+| Text overflows card | Add `text-overflow: ellipsis` + `overflow: hidden` |
+| Animation jank | Animate `transform` not `width`/`height` |
+| Form submits twice | Disable button on first click |
+| Console errors in prod | Add `no-console` ESLint rule |
+| DB connection timeout | Add connection pooling (PgBouncer/Prisma Accelerate) |
+| Sensitive data in API | Strip `passwordHash`/`secret` in response transformer |
+| App crashes on error | Add `app/error.tsx` error boundary |
+| Large JS bundles | Dynamic import heavy components, analyze with `next/bundle-analyzer` |
+| Images load slowly | Measure the image; eagerly load/priority the LCP image, lazy-load appropriate below-fold assets |
 
 ---
 
-## Definition of Done
+## Security Notes
 
-A change is **production-ready** only when ALL of the following are true:
+- Project commands can mutate state or execute arbitrary lifecycle/tool code; inspect them and use an isolated approved environment.
+- `PROD_URL` and `QA_AUTH_HEADER` only for environments you own
+- Use a reviewed secret scanner with redacted output; missing matches do not prove absence. Validate dependencies from structured audit results and propagate command failures.
+- Auth tests with real credentials against prod is destructive — use staging
 
-- [ ] `npx tsc --noEmit` passes
-- [ ] `npm run validate` passes (or no script)
-- [ ] `npm run lint:canon` passes (or no script)
-- [ ] `npx eslint .` passes with 0 warnings
-- [ ] `npm test` passes or no tests exist
-- [ ] `npm run build` completes successfully
-- [ ] Important pages show `○` or `●` in build output (not `λ`)
-- [ ] SEO tags visible in `curl` output for key pages
-- [ ] All sitemap routes return valid XML
-- [ ] No new 404s on previously working routes
-- [ ] No secrets in git diff
-- [ ] Commit message is scoped and descriptive
-- [ ] Social preview platforms show correct card after cache refresh
+---
 
 ## Limitations
 
-- Passing this checklist reduces release risk but does not prove the absence of production bugs.
-- Some checks depend on project-specific scripts, deployment topology, and external services that may not exist in every app.
-- Manual exploratory testing is still required for critical user journeys, payments, auth, and data mutation flows.
+- Passing all phases reduces risk but doesn't eliminate production bugs
+- Some checks depend on project-specific tooling (Prisma, NextAuth, etc.)
+- Manual UX testing still required for critical user journeys
+- SEO checks verify raw HTML only — not social preview rendering
+- Route checks verify status codes, not content correctness
+
+---
+
+## Master Checklist
+
+### Phase 1: Code
+- [ ] `tsc --noEmit`, `eslint`, `npm test` pass
+
+### Phase 2: Build
+- [ ] `npm run build` succeeds, no errors, pages static
+
+### Phase 3: Auth
+- [ ] Endpoints respond, protected routes denied, secure cookies
+
+### Phase 4: Routes
+- [ ] All core pages 200, sitemap valid, robots.txt correct
+
+### Phase 5: SEO
+- [ ] title, description, og:*, twitter:card, canonical, favicon, slugs
+
+### Phase 6: API
+- [ ] Status, Content-Type, consistent errors, timing
+
+### Phase 7: Git
+- [ ] No secrets, no artifacts, conventional commit
+
+### Phase 8: Smoke
+- [ ] Homepage + key pages 200, og:image loads
+
+### Phase 9: Speed
+- [ ] Lighthouse ≥ 90, lazy images, dynamic imports, font-display: swap
+
+### Phase 10: Clean
+- [ ] No vulns, no debug artifacts, unused deps pruned
+
+### Phase 11: UI/UX
+- [ ] Cards responsive, error boundaries, button states, reduced-motion
+
+### Phase 12: Database
+- [ ] Indexes, no N+1, no hardcoded URLs, no sensitive leaks
+
+### Phase 13: Secure Rendering
+- [ ] No secrets in client, no XSS, no stack leaks, UUIDs

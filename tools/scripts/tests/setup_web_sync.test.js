@@ -4,7 +4,7 @@ const os = require("os");
 const path = require("path");
 
 async function main() {
-  const { copyFolderSync, copyIndexFiles } = require("../../scripts/setup_web.js");
+  const { copySkillMarkdownFiles, copyIndexFiles } = require("../../scripts/setup_web.js");
 
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "setup-web-sync-"));
   try {
@@ -31,9 +31,10 @@ async function main() {
     fs.mkdirSync(path.join(skillsSource, "visible-skill"), { recursive: true });
     fs.mkdirSync(path.join(skillsSource, ".disabled", "hidden-skill"), { recursive: true });
     fs.writeFileSync(path.join(skillsSource, "visible-skill", "SKILL.md"), "# Visible\n", "utf8");
+    fs.writeFileSync(path.join(skillsSource, "visible-skill", "viewer.html"), "<script>alert(1)</script>", "utf8");
     fs.writeFileSync(path.join(skillsSource, ".disabled", "hidden-skill", "SKILL.md"), "# Hidden\n", "utf8");
 
-    copyFolderSync(skillsSource, skillsDest, skillsSource);
+    copySkillMarkdownFiles(skillsSource, skillsDest);
 
     assert.ok(fs.existsSync(path.join(skillsDest, "visible-skill", "SKILL.md")));
     assert.strictEqual(
@@ -41,9 +42,30 @@ async function main() {
       false,
       "web asset setup must not publish dot-prefixed skills directories",
     );
+    assert.strictEqual(
+      fs.existsSync(path.join(skillsDest, "visible-skill", "viewer.html")),
+      false,
+      "web asset setup must publish markdown only, never active community assets",
+    );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 }
 
 main();
+{
+ const {writePublicInfoApi}=require('../setup_web.js');
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'info-boundary-'));
+ try {
+  const publicRoot=path.join(root,'public');fs.mkdirSync(publicRoot);
+  const catalog=path.join(root,'catalog.json'),pkg=path.join(root,'package.json'),outside=path.join(root,'secret');
+  fs.writeFileSync(catalog,'[]');fs.writeFileSync(pkg,'{"version":"1.0.0"}');fs.writeFileSync(outside,'canary');
+  fs.symlinkSync(root,path.join(publicRoot,'api'),'dir');
+  assert.throws(()=>writePublicInfoApi(catalog,pkg,path.join(publicRoot,'api','secret'),publicRoot),/symlink/);
+  assert.equal(fs.readFileSync(outside,'utf8'),'canary');
+  fs.unlinkSync(path.join(publicRoot,'api'));fs.mkdirSync(path.join(publicRoot,'api'));
+  fs.symlinkSync(outside,path.join(publicRoot,'api','info.json'));
+  assert.throws(()=>writePublicInfoApi(catalog,pkg,path.join(publicRoot,'api','info.json'),publicRoot),/symlink/);
+  assert.equal(fs.readFileSync(outside,'utf8'),'canary');
+ } finally {fs.rmSync(root,{recursive:true,force:true});}
+}

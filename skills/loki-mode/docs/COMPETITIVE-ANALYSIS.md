@@ -1,3 +1,5 @@
+> Historical upstream analysis dated January 2026. Pricing, stars, features, competitor results and superiority claims below are not current verified facts. Benchmark conditions differ; the retry-assisted result is not pass@1, and patch generation is not solved-task accuracy. The bundled harness has not established leaderboard or production certification.
+
 # Loki Mode Competitive Analysis
 
 *Last Updated: 2026-01-05*
@@ -8,7 +10,7 @@ Loki Mode has **unique differentiation** in business operations automation but f
 
 ---
 
-## Factual Comparison Table
+## Archived Comparison (unverified historical claims)
 
 | Feature | Loki Mode | Claude-Flow | MetaGPT | CrewAI | Cursor Agent | Devin |
 |---------|-----------|-------------|---------|--------|--------------|-------|
@@ -19,7 +21,7 @@ Loki Mode has **unique differentiation** in business operations automation but f
 | **SWE-bench Score** | **99.67% patch gen (299/300)** | Unknown | Unknown | Unknown | Unknown | 15% complex |
 | **Full SDLC** | Yes (8 phases) | Yes | Partial | Partial | No | Partial |
 | **Business Ops** | **Yes (8 agents)** | No | No | No | No | No |
-| **Enterprise Security** | `--dangerously-skip-permissions` | MCP sandboxed | Sandboxed | Audit logs, RBAC | Staged autonomy | Sandboxed |
+| **Enterprise Security** | Normal permission prompts | MCP sandboxed | Sandboxed | Audit logs, RBAC | Staged autonomy | Sandboxed |
 | **Cross-Project Learning** | No | AgentDB | No | No | No | Limited |
 | **Observability** | Dashboard + STATUS.txt | Real-time tracing | Logs | Full tracing | Built-in | Full |
 | **Pricing** | Free (OSS) | Free (OSS) | Free (OSS) | $25+/mo | $20-400/mo | $20-500/mo |
@@ -160,7 +162,7 @@ Loki Mode has **unique differentiation** in business operations automation but f
 
 | Metric | Value |
 |--------|-------|
-| **Pass@1** | **98.78%** |
+| **Retry-assisted pass fraction** | **98.78%** |
 | Passed | 162/164 problems |
 | Failed | 2 problems (HumanEval/32, HumanEval/50) |
 | RARV Recoveries | 2 (HumanEval/38, HumanEval/132) |
@@ -180,7 +182,7 @@ Loki Mode has **unique differentiation** in business operations automation but f
 
 **Three-Way Comparison:**
 
-| System | HumanEval Pass@1 | Agent Type |
+| System | Reported HumanEval pass fraction | Agent Type |
 |--------|------------------|------------|
 | **Loki Mode (multi-agent)** | **98.78%** | Architect->Engineer->QA->Reviewer |
 | Direct Claude | 98.17% | Single agent |
@@ -235,7 +237,7 @@ Loki Mode has **unique differentiation** in business operations automation but f
 - **Next:** Run full SWE-bench harness for resolve rate validation
 
 ### Priority 2: Security Model (Critical for Enterprise)
-- **Gap:** Relies on `--dangerously-skip-permissions`
+- **Current posture:** Normal permission prompts remain enabled; advertised sandbox/path controls fail closed until implemented.
 - **Impact:** Enterprise adoption blocked
 - **Solution:** Implement sandbox mode, staged autonomy, audit logs
 

@@ -45,10 +45,12 @@ The frontmatter is at the very top, wrapped in `---`:
 ---
 name: my-skill-name
 description: "Brief description of what this skill does"
+category: development
 risk: safe
 source: community
 source_repo: owner/repo
 source_type: community
+date_added: "YYYY-MM-DD"
 ---
 ```
 
@@ -65,6 +67,12 @@ source_type: community
 - **Format:** String in quotes
 - **Length:** Keep it under 200 characters
 - **Example:** `"Stripe payment integration patterns including checkout, subscriptions, and webhooks"`
+
+#### `category`
+- **What it is:** Primary grouping used by generated indexes and catalog surfaces
+- **Format:** Lowercase category label
+- **Example:** `category: development`
+- **Note:** Tooling can infer a category for legacy skills, but new skills should declare one explicitly.
 
 #### `risk`
 - **What it is:** The safety classification of the skill
@@ -95,6 +103,12 @@ source_type: community
 - **Examples:** `source_type: official`, `source_type: community`
 - **Rule:** `self` means no external README repo credit is required
 
+#### `date_added`
+- **What it is:** Date the skill entered this repository
+- **Format:** `YYYY-MM-DD`
+- **Example:** `date_added: "2026-03-06"`
+- **Note:** Validation treats this as advisory for legacy content, but new contributions should include it.
+
 ### Optional Fields
 
 Some skills include additional metadata:
@@ -103,10 +117,12 @@ Some skills include additional metadata:
 ---
 name: my-skill-name
 description: "Brief description"
+category: development
 risk: safe
 source: community
 source_repo: owner/repo
 source_type: community
+date_added: "YYYY-MM-DD"
 author: "your-name-or-handle"
 tags: ["react", "typescript", "testing"]
 tools: [claude, cursor, gemini]
@@ -117,13 +133,13 @@ tools: [claude, cursor, gemini]
 - **What it is:** SPDX license identifier for the upstream source material
 - **Format:** A valid SPDX expression (e.g. `MIT`, `Apache-2.0`, `CC-BY-4.0`)
 - **Example:** `license: MIT`
-- **When to use:** Declare when `source_repo` points to material under a known license. Omitting it signals "license not verified" to downstream tooling.
+- **When to use:** For an external import, declare the verified upstream license and retain required license/NOTICE files with the bundle. The schema permits legacy omissions; that does not establish redistribution rights for a new submission.
 
 #### `license_source` *(optional)*
 - **What it is:** Direct URL to the upstream license file
 - **Format:** Full URL string
 - **Example:** `license_source: "https://github.com/owner/repo/blob/main/LICENSE"`
-- **When to use:** Include alongside `license:` so automated tooling can verify the claim. If the upstream repo has no LICENSE file, omit this field.
+- **When to use:** Include alongside `license:` with a link to the upstream license, preferably pinned to the reviewed revision. A URL is evidence of the claim, not a substitute for required notices. If no license grants redistribution, clarify permission before importing.
 
 ### Source-credit contract
 
@@ -131,7 +147,7 @@ tools: [claude, cursor, gemini]
 - `source_type: official` means the repo must appear in `README.md` under `### Official Sources`.
 - `source_type: community` means the repo must appear in `README.md` under `### Community Contributors`.
 - `source: self` plus `source_type: self` is the correct shape for original repository content.
-- PR CI checks README credit coverage for changed skills, so missing or misbucketed repo credits will block the PR once `source_repo` is declared.
+- PR CI previews generated README attribution from changed head metadata and the editorial `data/source-credits.json` ledger. Declare accurate provenance; ordinary new imports do not require hand-editing README credit sections. Custom descriptions and legacy corrections belong in the ledger. Canonical sync owns the rendered README blocks.
 
 ---
 
@@ -355,17 +371,17 @@ references/
 ## Skill Size Guidelines
 
 ### Minimum Viable Skill
-- **Frontmatter:** name + description
+- **Frontmatter:** standard fields (`name`, `description`, `category`, `risk`, `source`, `date_added`)
 - **Content:** 100-200 words
 - **Sections:** Overview + Instructions
 
 ### Standard Skill
-- **Frontmatter:** name + description
+- **Frontmatter:** standard fields (`name`, `description`, `category`, `risk`, `source`, `date_added`)
 - **Content:** 300-800 words
 - **Sections:** Overview + When to Use + Instructions + Examples
 
 ### Comprehensive Skill
-- **Frontmatter:** name + description + optional fields
+- **Frontmatter:** standard fields plus `source_repo`/`source_type` for external GitHub-derived skills and optional fields where useful
 - **Content:** 800-2000 words
 - **Sections:** All recommended sections
 - **Extras:** Scripts, examples, templates

@@ -17,6 +17,8 @@ Uso:
 import json
 import sys
 import os
+import re
+import stat
 from datetime import datetime
 from pathlib import Path
 
@@ -24,12 +26,44 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 SKILL_DIR = SCRIPT_DIR.parent
 DATA_DIR = SKILL_DIR / "data"
+SNAPSHOT_NAME = re.compile(r"\Asnapshot-\d{8}-\d{6}\.md\Z")
 
 # ── Functions ──────────────────────────────────────────────────────────────
 
 def ensure_data_dir():
     """Create data directory if it doesn't exist."""
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    if DATA_DIR.is_symlink():
+        raise ValueError("Diretorio de snapshots nao pode ser link simbolico")
+    DATA_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
+
+
+def snapshot_path(filename: str, *, must_exist: bool = True) -> Path:
+    """Resolve a canonical snapshot name without following links."""
+    if not isinstance(filename, str) or not SNAPSHOT_NAME.fullmatch(filename):
+        raise ValueError("Nome de snapshot invalido")
+    filepath = DATA_DIR / filename
+    if must_exist:
+        try:
+            stat = filepath.lstat()
+        except FileNotFoundError:
+            raise FileNotFoundError(filename) from None
+        if filepath.is_symlink() or not filepath.is_file():
+            raise ValueError("Snapshot deve ser um arquivo regular")
+    return filepath
+
+
+def read_snapshot_file(filepath: Path) -> str:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(filepath, flags)
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise ValueError("Snapshot deve ser um arquivo regular")
+        with os.fdopen(descriptor, "r", encoding="utf-8") as handle:
+            descriptor = -1
+            return handle.read()
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
 
 
 def save_snapshot(project: str = "", phase: str = "", summary: str = "") -> str:
@@ -44,13 +78,13 @@ def save_snapshot(project: str = "", phase: str = "", summary: str = "") -> str:
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     filename = f"snapshot-{timestamp}.md"
-    filepath = DATA_DIR / filename
+    filepath = snapshot_path(filename, must_exist=False)
 
     header = f"""# Context Guardian Snapshot — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 **Projeto**: {project or 'nao especificado'}
 **Fase**: {phase or 'nao especificada'}
 **Resumo**: {summary or 'snapshot pre-compactacao'}
-**Modelo**: claude-opus-4-6
+**Modelo**: nao informado
 
 ---
 
@@ -90,17 +124,25 @@ def save_snapshot(project: str = "", phase: str = "", summary: str = "") -> str:
 *Para restaurar: leia este arquivo + MEMORY.md + context_manager.py load*
 """
 
-    filepath.write_text(header, encoding="utf-8")
+    # Exclusive creation prevents overwriting a same-second snapshot or following a link.
+    descriptor = os.open(filepath, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        handle.write(header)
     return str(filepath)
 
 
 def list_snapshots() -> list[dict]:
     """List all snapshots with metadata."""
-    ensure_data_dir()
+    if DATA_DIR.is_symlink():
+        raise ValueError("Diretorio de snapshots nao pode ser link simbolico")
+    if not DATA_DIR.exists():
+        return []
     snapshots = []
 
-    for f in sorted(DATA_DIR.glob("snapshot-*.md"), reverse=True):
-        stat = f.stat()
+    for f in sorted(DATA_DIR.iterdir(), reverse=True):
+        if not SNAPSHOT_NAME.fullmatch(f.name) or f.is_symlink() or not f.is_file():
+            continue
+        stat = f.lstat()
         snapshots.append({
             "file": f.name,
             "path": str(f),
@@ -118,8 +160,8 @@ def read_latest() -> dict:
         return {"error": "Nenhum snapshot encontrado."}
 
     latest = snapshots[0]
-    path = Path(latest["path"])
-    content = path.read_text(encoding="utf-8")
+    path = snapshot_path(latest["file"])
+    content = read_snapshot_file(path)
 
     return {
         "file": latest["file"],
@@ -131,11 +173,12 @@ def read_latest() -> dict:
 
 def read_snapshot(filename: str) -> dict:
     """Read a specific snapshot by filename."""
-    filepath = DATA_DIR / filename
-    if not filepath.exists():
-        return {"error": f"Arquivo nao encontrado: {filename}"}
+    try:
+        filepath = snapshot_path(filename)
+    except (ValueError, FileNotFoundError) as error:
+        return {"error": f"Arquivo invalido ou nao encontrado: {filename}", "detail": str(error)}
 
-    content = filepath.read_text(encoding="utf-8")
+    content = read_snapshot_file(filepath)
     return {
         "file": filename,
         "path": str(filepath),
@@ -145,13 +188,15 @@ def read_snapshot(filename: str) -> dict:
 
 def prune_snapshots(keep: int = 10) -> dict:
     """Remove old snapshots, keeping the N most recent."""
+    if not isinstance(keep, int) or keep < 1:
+        raise ValueError("keep deve ser um inteiro positivo")
     snapshots = list_snapshots()
     if len(snapshots) <= keep:
         return {"pruned": 0, "remaining": len(snapshots)}
 
     to_remove = snapshots[keep:]
     for s in to_remove:
-        Path(s["path"]).unlink()
+        snapshot_path(s["file"]).unlink()
 
     return {"pruned": len(to_remove), "remaining": keep}
 

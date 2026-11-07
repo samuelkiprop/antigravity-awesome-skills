@@ -20,6 +20,8 @@ Use this skill when:
 - **Refactoring legacy code**: To identify and remove code smells.
 - **Improving team standards**: To align on industry-standard best practices.
 
+These are design heuristics, not universal language rules or authority to change behavior. Follow the actual repository conventions; exceptions versus result types, nullability, argument counts and test cadence depend on the language and task. Preserve necessary rationale, security and license comments. Refactor only within scope and verify the relevant behavior.
+
 ## 1. Meaningful Names
 - **Use Intention-Revealing Names**: `elapsedTimeInDays` instead of `d`.
 - **Avoid Disinformation**: Don't use `accountList` if it's actually a `Map`.
@@ -92,6 +94,12 @@ Use this skill when:
 - [ ] Have I avoided comments by making the code clearer?
 - [ ] Am I passing too many arguments?
 - [ ] Is there a failing test for this change?
+
+## Example
+
+**User request:**
+
+> Refactor this working code for clearer names, smaller units, explicit errors, and preserved behavior; verify it with focused tests.
 
 ## Limitations
 - Use this skill only when the task clearly matches the scope described above.

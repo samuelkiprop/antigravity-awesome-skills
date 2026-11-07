@@ -74,7 +74,7 @@ const config: CapacitorConfig = {
 
 ```typescript
 import { Camera, CameraResultType } from '@capacitor/camera';
-import { Preferences } from '@capacitor/preferences';
+import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Geolocation } from '@capacitor/geolocation';
 
@@ -88,13 +88,16 @@ const takePhoto = async () => {
   return photo.webPath;
 };
 
-// Secure storage
+// Secure storage: do not store auth tokens in Capacitor Preferences.
+// Use a platform-backed secure storage plugin such as
+// @aparajita/capacitor-secure-storage, Ionic Identity Vault, or an
+// equivalent Android Keystore-backed plugin.
 const saveToken = async (token: string) => {
-  await Preferences.set({ key: 'auth_token', value: token });
+  await SecureStorage.set({ key: 'auth_token', value: token });
 };
 
 const getToken = async (): Promise<string | null> => {
-  const { value } = await Preferences.get({ key: 'auth_token' });
+  const { value } = await SecureStorage.get({ key: 'auth_token' });
   return value;
 };
 
@@ -104,8 +107,8 @@ const initPush = async () => {
   if (permission.receive === 'granted') {
     await PushNotifications.register();
   }
-  PushNotifications.addListener('registration', ({ value: token }) => {
-    console.log('FCM Token:', token);
+  PushNotifications.addListener('registration', () => {
+    console.log('Push registration succeeded');
   });
 };
 ```

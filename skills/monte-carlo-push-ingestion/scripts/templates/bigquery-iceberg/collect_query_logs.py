@@ -23,6 +23,7 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from google.cloud import bigquery
+from _safe_paths import safe_existing_directory, safe_input_json_path, safe_output_json_path, write_json_file
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -65,6 +66,8 @@ def _collect_query_logs(
         min_creation_time=start_dt,
         max_creation_time=end_dt,
     ):
+        if getattr(job, "state", None) != "DONE" or not getattr(job, "ended", None):
+            continue
         sql: str = getattr(job, "query", None) or ""
         if not sql.strip():
             continue
@@ -97,6 +100,8 @@ def collect(
     output_file: str = "query_logs_output.json",
 ) -> dict:
     """Collect query logs and write a JSON manifest."""
+    if not 1 <= lookback_hours <= 744 or not 0 <= lookback_lag_hours <= 168 or not 1 <= MAX_JOBS <= 100000:
+        raise ValueError("Invalid query-log time window or job bound")
     bq_client = bigquery.Client(project=project_id)
 
     end_dt = datetime.now(timezone.utc) - timedelta(hours=lookback_lag_hours)
@@ -113,8 +118,7 @@ def collect(
         "query_log_count": len(entries),
         "queries": entries,
     }
-    with open(output_file, "w") as fh:
-        json.dump(manifest, fh, indent=2)
+    write_json_file(output_file, manifest)
     log.info("Query log manifest written to %s", output_file)
 
     return manifest

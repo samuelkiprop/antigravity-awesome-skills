@@ -7,9 +7,7 @@ Supports both content-based and reference image-based generation.
 import os
 import sys
 import json
-import time
 import argparse
-import requests
 from typing import Optional, Dict, Any
 
 
@@ -50,6 +48,8 @@ def generate_slides(
     Returns:
         Dict with generation result or job ID
     """
+    import requests
+
     if api_key is None:
         api_key = get_api_key()
 
@@ -71,7 +71,7 @@ def generate_slides(
     timeout = 90 if mode == "sync" else 30
 
     print(f"Generating slides in {mode} mode...", file=sys.stderr)
-    response = requests.post(url, headers=headers, json=payload, timeout=timeout)
+    response = requests.post(url, headers=headers, json=payload, timeout=timeout, allow_redirects=False)
     response.raise_for_status()
 
     result = response.json()
@@ -87,7 +87,7 @@ def generate_slides(
         raise ValueError("No data in API response")
 
     if mode == "sync":
-        print("✓ Slides generated successfully!", file=sys.stderr)
+        print(f"Request accepted; generation status: {data.get('status', 'unknown')}", file=sys.stderr)
         print(f"  Pages: {data.get('slidePageCount', 'N/A')}", file=sys.stderr)
         if data.get("downloadUrl"):
             print(f"  Download URL: {data.get('downloadUrl')}", file=sys.stderr)
@@ -106,6 +106,7 @@ def create_like_this(
     resolution: str = "2K",
     page: int = 1,
     content_detail: str = "concise",
+    mode: str = "async",
     api_key: Optional[str] = None
 ) -> Dict[str, Any]:
     """
@@ -122,11 +123,14 @@ def create_like_this(
         resolution: Output quality - "1K", "2K", or "4K" (default: "2K")
         page: Number of slides, 0 for auto-detection, max 100 (default: 1)
         content_detail: "concise" (brief, keyword-focused) or "standard" (comprehensive) (default: "concise")
+        mode: "sync" or "async" (default: "async")
         api_key: API key (uses env var if not provided)
 
     Returns:
         Dict with generation result
     """
+    import requests
+
     if api_key is None:
         api_key = get_api_key()
 
@@ -142,17 +146,21 @@ def create_like_this(
         "aspectRatio": aspect_ratio,
         "resolution": resolution,
         "page": page,
-        "contentDetail": content_detail
+        "contentDetail": content_detail,
+        "mode": mode
     }
 
     url = f"{API_BASE_URL}/slides/create-like-this"
+
+    if isinstance(page, bool) or not isinstance(page, int) or not 0 <= page <= 100:
+        raise ValueError("page must be an integer from 0 to 100")
 
     # Calculate dynamic timeout: ~30s per page, minimum 120s
     timeout = max(120, page * 40)
 
     print("Generating slides from reference image...", file=sys.stderr)
     print(f"(Timeout set to {timeout}s for {page} page(s))", file=sys.stderr)
-    response = requests.post(url, headers=headers, json=payload, timeout=timeout)
+    response = requests.post(url, headers=headers, json=payload, timeout=timeout, allow_redirects=False)
     response.raise_for_status()
 
     result = response.json()
@@ -169,13 +177,11 @@ def create_like_this(
             "slidePageCount": data.get("slidePageCount"),
             "jobId": data.get("jobId")
         }
-        print("✓ Slides generated successfully!", file=sys.stderr)
+        print(f"Request accepted; generation status: {data.get('status', 'unknown')}", file=sys.stderr)
         print(f"  Pages: {data.get('slidePageCount')}", file=sys.stderr)
         return normalized_result
     else:
-        # Fallback to raw result if structure is unexpected
-        print("✓ Request completed!", file=sys.stderr)
-        return result
+        raise ValueError("Generation failed or returned an unexpected response envelope")
 
 
 def main():
@@ -202,8 +208,8 @@ Examples:
     parser.add_argument("--theme-id", help="Theme ID (required for standard generation)")
     parser.add_argument("--reference-image", help="Reference image URL (use this OR theme-id)")
     parser.add_argument("--language", default="Auto", help="Response language (default: Auto)")
-    parser.add_argument("--mode", choices=["sync", "async"], default="sync",
-                       help="Generation mode (default: sync)")
+    parser.add_argument("--mode", choices=["sync", "async"],
+                       help="Generation mode (default: sync for theme, async for reference-image)")
     parser.add_argument("--aspect-ratio", default="16:9", help="Aspect ratio in width:height format (default: 16:9)")
     parser.add_argument("--resolution", choices=["1K", "2K", "4K"], default="2K",
                        help="Output quality (default: 2K)")
@@ -222,7 +228,8 @@ Examples:
                 aspect_ratio=args.aspect_ratio,
                 resolution=args.resolution,
                 page=args.page,
-                content_detail=args.content_detail
+                content_detail=args.content_detail,
+                mode=args.mode or "async"
             )
         else:
             if not args.theme_id:
@@ -233,7 +240,7 @@ Examples:
                 user_input=args.content,
                 theme_id=args.theme_id,
                 response_language=args.language,
-                mode=args.mode
+                mode=args.mode or "sync"
             )
 
         print(json.dumps(result, indent=2))

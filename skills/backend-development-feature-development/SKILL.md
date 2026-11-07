@@ -1,7 +1,7 @@
 ---
 name: backend-development-feature-development
 description: "Orchestrate end-to-end backend feature development from requirements to deployment. Use when coordinating multi-phase feature delivery across teams and services."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -34,6 +34,8 @@ Orchestrate end-to-end feature development from requirements to production deplo
 
 - Avoid production changes without approvals and rollback plans.
 - Validate data migrations and feature flags in staging first.
+
+Tool names, role identifiers and flags below describe a workflow, not an installed executable interface. Check available tools or perform the responsibility directly. Effort estimates, coverage thresholds and rollback times are planning examples, not guarantees. A deployment switch does not reverse database writes or external side effects: prefer compatible expand/contract migrations, record a tested recovery plan and coordinate data restoration separately.
 
 ## Configuration Options
 
@@ -181,6 +183,12 @@ If issues arise during or after deployment:
 5. Incident post-mortem and fixes before re-deployment
 
 Feature description: $ARGUMENTS
+
+## Example
+
+**User request:**
+
+> Coordinate end-to-end feature delivery across backend, frontend, and data.
 
 ## Limitations
 - Use this skill only when the task clearly matches the scope described above.

@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "repository": "sickn33/agentic-awesome-skills",
+  "version": "20.6.0",
+  "main": "ee41087d523c82cbf1b2dd6c992ba8864b7cc61e",
+  "prs": [
+    2280,
+    2279,
+    2278,
+    2277,
+    2276,
+    2275,
+    2274,
+    2273,
+    2272,
+    2271,
+    2262,
+    2261
+  ],
+  "pulls": [
+    {
+      "number": 2280,
+      "head": "5411ff1ad33ecbda87cd36fb499bfb2a8191a765",
+      "merge": null,
+      "closedAt": "2026-11-05T10:31:11Z"
+    },
+    {
+      "number": 2279,
+      "head": "9eb3ce44dc44ac95e0235d2007cee4e652dbdd92",
+      "merge": null,
+      "closedAt": "2026-11-05T10:31:16Z"
+    },
+    {
+      "number": 2278,
+      "head": "9babfba86e3f146b593764ab5e6ea3ff9b3339aa",
+      "merge": null,
+      "closedAt": "2026-11-05T10:31:21Z"
+    },
+    {
+      "number": 2277,
+      "head": "0207aba45225b2e06f71e831c49fd41c0d119b59",
+      "merge": null,
+      "closedAt": "2026-11-05T10:31:26Z"
+    },
+    {
+      "number": 2276,
+      "head": "8226d656bd6ea64a39b0164d871b89d2d979f14e",
+      "merge": null,
+      "closedAt": "2026-11-05T10:31:31Z"
+    },
+    {
+      "number": 2275,
+      "head": "6f2845fb9a7051a9903dc17fddfefb4ee72c43ec",
+      "merge": null,
+      "closedAt": "2026-11-05T10:31:35Z"
+    },
+    {
+      "number": 2274,
+      "head": "8e01bccc5294b8e2aea335206f7c9b713ec135b0",
+      "merge": null,
+      "closedAt": "2026-11-05T10:31:40Z"
+    },
+    {
+      "number": 2273,
+      "head": "f00037372f5dd908f39acdf6f8f10bcd8986ee40",
+      "merge": null,
+      "closedAt": "2026-11-05T10:31:44Z"
+    },
+    {
+      "number": 2272,
+      "head": "833b7fb0973ca0543767a095412756a305f85483",
+      "merge": "cea7f7e82f4652f0c81ef2dcb7a596182eae572d",
+      "closedAt": "2026-11-05T10:07:52Z"
+    },
+    {
+      "number": 2271,
+      "head": "461273873f1ae6abf0312495cebe9637cb6b416e",
+      "merge": null,
+      "closedAt": "2026-11-05T10:31:49Z"
+    },
+    {
+      "number": 2262,
+      "head": "535d0a5d7920b578eb04186b742ccbf5f64ea787",
+      "merge": null,
+      "closedAt": "2026-11-05T10:31:54Z"
+    },
+    {
+      "number": 2261,
+      "head": "b01deb8b8f64e3450ef961a6bfbb8cf7f61edcc4",
+      "merge": null,
+      "closedAt": "2026-11-05T10:31:59Z"
+    }
+  ],
+  "completedAt": "2026-11-05T10:58:07.555Z"
+}

@@ -37,7 +37,7 @@ You are an expert software engineer and systems analyst. Your job is to deeply u
 | "Data flows through Z" | Trace: entry point → transformations → destination |
 | "This is the main entry point" | Where it's invoked (config, main, route registration) |
 | "These modules are coupled" | Import/dependency chain |
-| "This is dead code" | Show no call sites exist |
+| "This may be unused code" | Search static call sites and dynamic registration/configuration; state the search scope and unresolved runtime loading |
 
 ## Process: 5 Iterations
 
@@ -68,6 +68,12 @@ Each iteration takes a different lens and builds on all prior findings:
 
 ### When to Use
 This skill is applicable to execute the workflow or actions described in the overview.
+
+## Example
+
+**User request:**
+
+> Explain how this subsystem works across files, including control flow, data flow, boundaries, and evidence.
 
 ## Limitations
 - Use this skill only when the task clearly matches the scope described above.

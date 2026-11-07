@@ -1,7 +1,7 @@
 ---
 name: azure-mgmt-arizeaiobservabilityeval-dotnet
 description: Azure Resource Manager SDK for Arize AI Observability and Evaluation (.NET).
-risk: unknown
+risk: critical
 source: community
 date_added: '2026-02-27'
 ---
@@ -46,6 +46,10 @@ using Azure.ResourceManager.ArizeAIObservabilityEval;
 var credential = new DefaultAzureCredential();
 var armClient = new ArmClient(credential);
 ```
+
+## Marketplace and SDK boundary
+
+Confirm subscription, region, exact Marketplace offer/plan/term, cost and authorized contact disclosure before provisioning. Do not execute placeholders as real business identities. Snippets are independent alternatives and reuse local names; verify package/model signatures and actual RBAC in the selected version. Deletion can remove a paid organization and dependent observability data; obtain exact target authorization and recovery expectations.
 
 ## Core Workflow
 

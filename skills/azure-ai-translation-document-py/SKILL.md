@@ -1,7 +1,7 @@
 ---
 name: azure-ai-translation-document-py
 description: Azure AI Document Translation SDK for batch translation of documents with format preservation. Use for translating Word, PDF, Excel, PowerPoint, and other document formats at scale.
-risk: unknown
+risk: critical
 source: community
 date_added: '2026-02-27'
 ---
@@ -53,6 +53,10 @@ client = DocumentTranslationClient(
     credential=DefaultAzureCredential()
 )
 ```
+
+## Disclosure and cost boundary
+
+Translation sends documents to Azure and writes output to the selected containers. Confirm authorized document subset, destination, region, retention and budget. Keep SAS URLs out of logs, use short-lived least-privilege access and handle each document’s failure separately; overall job completion does not imply all documents succeeded. SDK/single-document methods and language/format support are version-dependent: inspect current package docs before running fragments.
 
 ## Basic Document Translation
 
@@ -146,7 +150,7 @@ operation_id = poller.id
 document_statuses = client.list_document_statuses(operation_id)
 
 for doc in document_statuses:
-    print(f"Document: {doc.source_document_url}")
+    print(f"Document ID: {doc.id}")  # Avoid logging SAS-bearing source URLs.
     print(f"  Status: {doc.status}")
     print(f"  Translated to: {doc.translated_to}")
     if doc.error:

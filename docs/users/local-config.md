@@ -1,7 +1,7 @@
-# Local Skills Configuration
+# Local Skills Configuration Snapshot
 
-> **Current Status**: All 96 skills are available in the repository.  
-> **This Document**: Recommends 35 high-priority skills for typical usage.
+> **Historical snapshot**: This page preserves an older 35-skill local configuration recommendation from 2026-01-16. It is not the current repository catalog.
+> **Current catalog**: Use [`../../skills_index.json`](../../skills_index.json), [`../../CATALOG.md`](../../CATALOG.md), or the installer filters in the README for the active skill library.
 
 ## 📊 Recommended High-Priority Skills (35)
 
@@ -29,10 +29,6 @@ Essential skills used automatically by the agent:
 
 Skills actively used for your specific projects:
 
-- `docx-official` (+ symlink `docx`) - Official Anthropic Word manipulation
-- `pdf-official` (+ symlink `pdf`) - Official Anthropic PDF manipulation
-- `pptx-official` (+ symlink `pptx`) - Official Anthropic PowerPoint manipulation
-- `xlsx-official` (+ symlink `xlsx`) - Official Anthropic Excel manipulation
 - `react-best-practices` - Vercel's 40+ performance optimization rules
 - `web-design-guidelines` - Vercel's 100+ UI/UX audit rules
 - `frontend-dev-guidelines` - Modern React/TS development patterns
@@ -67,17 +63,17 @@ Skills actively used for your specific projects:
 
 ---
 
-## 🗂️ Repository Structure
+## 🗂️ Snapshot Structure
 
 ```
-skills/
-├── [96 active skills]     ← All skills available
-└── [4 symlinks]           ← docx, pdf, pptx, xlsx → official versions
+local snapshot/
+├── [96 active skills in this snapshot]
+└── [4 symlinks in this snapshot]
 ```
 
 ---
 
-## 📚 Other Available Skills (61)
+## 📚 Other Snapshot Skills (61)
 
 All other skills in the repository are available for use as needed. Some notable categories:
 
@@ -140,13 +136,13 @@ Miscellaneous:
 ## 🎯 Benefits of This Recommendation
 
 ✅ **Focused Guidance** - 35 high-priority skills for common workflows  
-✅ **Full Availability** - All 96 skills accessible when needed  
+✅ **Snapshot Availability** - All 96 skills from this older local set were accessible when needed
 ✅ **Balanced Coverage** - Core dev + AI/automation + frontend excellence  
 ✅ **Easy Discovery** - Categorized list of all other available skills
 
 ---
 
-**Last Updated**: 2026-01-16  
+**Snapshot Date**: 2026-01-16
 **Recommended Skills**: 35 high-priority  
-**Total Available**: 96 skills + 4 symlinks = 100 total  
+**Snapshot Total**: 96 skills + 4 symlinks = 100 total
 **Recent Additions to Recommendations**: `senior-fullstack`, `concise-planning`, `address-github-comments`, `javascript-mastery`, `workflow-automation`, `llm-app-patterns`, `autonomous-agent-patterns`, `prompt-library`

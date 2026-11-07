@@ -1,14 +1,20 @@
 ---
-source: "https://github.com/huggingface/skills/tree/main/skills/huggingface-gradio"
 name: hugging-face-gradio
-description: Build or edit Gradio apps, layouts, components, and chat interfaces in Python.
-risk: unknown
+description: Build Gradio web UIs and demos in Python. Use when creating or editing Gradio apps, components, event listeners, layouts, or chatbots.
+risk: critical
+source: https://github.com/huggingface/skills/tree/main/skills/huggingface-gradio
+source_repo: huggingface/skills
+source_type: official
+date_added: 2026-07-01
+license: Apache-2.0
+license_source: https://github.com/huggingface/skills/blob/main/LICENSE
 ---
 
 # Gradio
-
 ## When to Use
-Use this skill when a user wants a Gradio demo, UI prototype, or Python-based ML interface.
+
+Use this skill when you need build Gradio web UIs and demos in Python. Use when creating or editing Gradio apps, components, event listeners, layouts, or chatbots.
+
 
 Gradio is a Python library for building interactive web UIs and ML demos. This skill covers the core API, patterns, and examples.
 
@@ -28,6 +34,10 @@ Detailed guides on specific topics (read these when relevant):
 - [Custom HTML Components](https://www.gradio.app/guides/custom-HTML-components)
 - [Getting Started with the Python Client](https://www.gradio.app/guides/getting-started-with-the-python-client)
 - [Getting Started with the JS Client](https://www.gradio.app/guides/getting-started-with-the-js-client)
+
+## Version and security boundaries
+
+Signatures below are an imported API snapshot, not valid Python stubs or a universal version contract. Inspect the installed Gradio version and its official docs before using newer parameters/CLI commands. Keep demos on loopback by default; public sharing/listening, remote predictions and uploads require explicit authorization. Validate upload size/type/content and output paths, keep HTML sanitization enabled, and use authentication/rate limits for exposed endpoints. Do not expose arbitrary local directories, secrets or server-side execution tools through a demo.
 
 ## Core Patterns
 
@@ -296,13 +306,14 @@ gradio predict gradio/image_mod /predict '{"image": {"path": "/path/to/image.png
 # {"output": "/tmp/gradio/.../output.png"}
 ```
 
-Both commands accept `--token` for accessing private Spaces.
+Verify authentication options for the installed CLI; avoid passing tokens in argv or logs and prefer supported protected environment/credential storage. Remote prediction uploads data and may incur compute costs.
 
 ## Additional Reference
 
 - [End-to-End Examples](examples.md) — complete working apps
 
 ## Limitations
-- Use this skill only when the task clearly matches the scope described above.
-- Do not treat the output as a substitute for environment-specific validation, testing, or expert review.
-- Stop and ask for clarification if required inputs, permissions, safety boundaries, or success criteria are missing.
+
+- Use this skill only when the task clearly matches its upstream product or API scope.
+- Verify commands, API behavior, pricing, quotas, credentials, and deployment effects against current official documentation before making changes.
+- Do not treat generated examples as a substitute for environment-specific tests, security review, or user approval for destructive or costly actions.

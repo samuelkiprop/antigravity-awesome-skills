@@ -18,6 +18,8 @@ Usage:
     python full_audit.py --target /path/to/project --output json
 """
 
+import contextlib
+import io
 import argparse
 import json
 import os
@@ -26,6 +28,24 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+def safe_user_path(path_value, base_dir="."):
+    """Resolve a CLI path under the current workspace."""
+    if base_dir != ".":
+        raise ValueError("Custom base directories are not supported for CLI paths")
+    base_path = Path.cwd().resolve()
+    resolved_path = Path(path_value).expanduser().resolve()
+    try:
+        resolved_path.relative_to(base_path)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes allowed directory: {path_value}") from exc
+    return resolved_path
+
+def _run_scanner(scanner, **kwargs):
+    """Capture scanner chatter so the parent emits one redacted JSON document."""
+    with contextlib.redirect_stdout(io.StringIO()):
+        return scanner(**kwargs)
 
 # ---------------------------------------------------------------------------
 # Imports from the 007 config hub (same directory)
@@ -236,7 +256,7 @@ _BLUE_TEAM_TEMPLATES: dict[str, dict] = {
         "recommendation": (
             "Remove all uses of eval(), exec(), and Function(). If dynamic "
             "code execution is absolutely necessary, use a sandboxed environment "
-            "(e.g. RestrictedPython, vm2 in strict mode) with allowlisted "
+            "with an OS/container sandbox and allowlisted "
             "operations only. Never pass user input to code execution functions."
         ),
         "priority": "CRITICAL",
@@ -297,9 +317,9 @@ _BLUE_TEAM_TEMPLATES: dict[str, dict] = {
     },
     "path_traversal": {
         "recommendation": (
-            "Use Path.resolve() and verify the resolved path starts with the "
+            "Use Path.resolve().relative_to(base) for component-aware containment under the "
             "expected base directory. Never pass raw user input to open() or "
-            "file operations. Use os.path.realpath() followed by a prefix check. "
+            "file operations. Never use string prefix checks for containment. "
             "Implement a file access allowlist."
         ),
         "priority": "HIGH",
@@ -397,31 +417,30 @@ def _phase1_surface_mapping(target: Path, verbose: bool = False) -> dict:
 
     _config_extensions = {".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".env"}
 
-    for root, dirs, filenames in os.walk(target):
-        dirs[:] = [d for d in dirs if d not in SKIP_DIRECTORIES]
+    for fpath in safe_user_path(target).rglob("*"):
+        if fpath.is_symlink() or not fpath.is_file() or any(part in SKIP_DIRECTORIES for part in fpath.parts):
+            continue
+        fname = fpath.name
+        total_files += 1
+        suffix = fpath.suffix.lower()
 
-        for fname in filenames:
-            total_files += 1
-            fpath = Path(root) / fname
-            suffix = fpath.suffix.lower()
+        # Categorize by extension
+        ext_key = suffix if suffix else "(no extension)"
+        files_by_type[ext_key] = files_by_type.get(ext_key, 0) + 1
 
-            # Categorize by extension
-            ext_key = suffix if suffix else "(no extension)"
-            files_by_type[ext_key] = files_by_type.get(ext_key, 0) + 1
+        # Detect entry points
+        for pat in _entry_point_patterns:
+            if pat.search(fname) or pat.search(str(fpath)):
+                entry_points.append(str(fpath))
+                break
 
-            # Detect entry points
-            for pat in _entry_point_patterns:
-                if pat.search(fname) or pat.search(str(fpath)):
-                    entry_points.append(str(fpath))
-                    break
+        # Detect dependency files
+        if fname.lower() in _dep_file_names:
+            dependency_files.append(str(fpath))
 
-            # Detect dependency files
-            if fname.lower() in _dep_file_names:
-                dependency_files.append(str(fpath))
-
-            # Detect config files
-            if suffix in _config_extensions or fname.lower().startswith(".env"):
-                config_files.append(str(fpath))
+        # Detect config files
+        if suffix in _config_extensions or fname.lower().startswith(".env"):
+            config_files.append(str(fpath))
 
     # Sort by count descending
     sorted_types = sorted(files_by_type.items(), key=lambda x: x[1], reverse=True)
@@ -853,10 +872,17 @@ def _generate_markdown_report(
         lines.append("")
         lines.append("| Check | Status | Details | Scanner |")
         lines.append("|-------|--------|---------|---------|")
+        def format_status(status: str) -> str:
+            if status == "PASS":
+                return "[PASS]"
+            if status == "WARN":
+                return "[WARN]"
+            if status == "FAIL":
+                return "[FAIL]"
+            return status
+
         for item in p3.get("checklist", []):
-            status_icon = {"PASS": "[PASS]", "WARN": "[WARN]", "FAIL": "[FAIL]"}.get(
-                item["status"], item["status"]
-            )
+            status_icon = format_status(item["status"])
             lines.append(
                 f"| {item['check']} | {status_icon} | {item['details']} | {item['scanner']} |"
             )
@@ -1046,7 +1072,7 @@ def run_audit(
 
     ensure_directories()
 
-    target = Path(target_path).resolve()
+    target = safe_user_path(target_path).resolve()
     if not target.exists():
         logger.error("Target path does not exist: %s", target)
         sys.exit(1)
@@ -1087,32 +1113,32 @@ def run_audit(
         logger.info("Running scanners for phases %s...", [p for p in phases_list if p >= 3])
 
         try:
-            secrets_report = secrets_scanner.run_scan(
+            secrets_report = _run_scanner(secrets_scanner.run_scan,
                 target_path=target_str, output_format="json", verbose=verbose,
             )
-        except SystemExit:
-            pass
+        except SystemExit as exc:
+            raise RuntimeError("Scanner failed; audit incomplete") from exc
 
         try:
-            dep_report = dependency_scanner.run_scan(
+            dep_report = _run_scanner(dependency_scanner.run_scan,
                 target_path=target_str, output_format="json", verbose=verbose,
             )
-        except SystemExit:
-            pass
+        except SystemExit as exc:
+            raise RuntimeError("Scanner failed; audit incomplete") from exc
 
         try:
-            inj_report = injection_scanner.run_scan(
+            inj_report = _run_scanner(injection_scanner.run_scan,
                 target_path=target_str, output_format="json", verbose=verbose,
             )
-        except SystemExit:
-            pass
+        except SystemExit as exc:
+            raise RuntimeError("Scanner failed; audit incomplete") from exc
 
         try:
-            quick_report = quick_scan.run_scan(
+            quick_report = _run_scanner(quick_scan.run_scan,
                 target_path=target_str, output_format="json", verbose=verbose,
             )
-        except SystemExit:
-            pass
+        except SystemExit as exc:
+            raise RuntimeError("Scanner failed; audit incomplete") from exc
 
         # Aggregate and deduplicate
         raw = (
@@ -1195,7 +1221,8 @@ def run_audit(
     report_path = REPORTS_DIR / report_filename
 
     try:
-        report_path.write_text(md_report, encoding="utf-8")
+        with report_path.open("x", encoding="utf-8") as report_file:
+            report_file.write(md_report)
         logger.info("Markdown report saved to %s", report_path)
     except OSError as exc:
         logger.warning("Could not save report: %s", exc)

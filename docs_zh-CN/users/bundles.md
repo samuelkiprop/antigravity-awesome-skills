@@ -4,16 +4,16 @@
 
 > 这些包是为人类提供的精选入门建议。`data/bundles.json` 中生成的捆绑包 ID 是更广泛的目录/工作流分组，不需要与下面的编辑包一一对应。
 
-> **重要提示：** 捆绑包不是可调用的大型技能，如 `@web-wizard` 或 `/essentials-bundle`。使用包中列出的各个技能，或者如果你只想在实时 Antigravity 目录中激活该捆绑包的技能，请使用激活脚本。
+> **重要提示：** 捆绑包不是可调用的大型技能，如 `@web-wizard` 或 `/essentials-bundle`。它们可以作为人工阅读清单、Claude/Codex 插件子集或 Antigravity 激活预设使用；在对话中仍应调用包中列出的各个技能。
 
 ## 快速开始
 
 1. **安装仓库：**
 
    ```bash
-   npx antigravity-awesome-skills
+   npx agentic-awesome-skills
    # 或手动克隆
-   git clone https://github.com/sickn33/antigravity-awesome-skills.git .agent/skills
+   git clone https://github.com/sickn33/agentic-awesome-skills.git .agent/skills
    ```
 
 2. **根据你的角色或兴趣**从下面的列表中选择你的捆绑包。
@@ -460,10 +460,6 @@ _用于技术 SEO、内容结构和搜索增长。_
 _用于重度文档工作流、电子表格、PDF 和演示。_
 
 - [`office-productivity`](../../skills/office-productivity/)：协调文档、电子表格和演示工作流。
-- [`docx-official`](../../skills/docx-official/)：创建和编辑 Word 兼容文档。
-- [`pptx-official`](../../skills/pptx-official/)：创建和编辑 PowerPoint 兼容演示。
-- [`xlsx-official`](../../skills/xlsx-official/)：使用公式和格式创建和分析电子表格文件。
-- [`pdf-official`](../../skills/pdf-official/)：以编程方式提取、生成和操作 PDF。
 - [`google-slides-automation`](../../skills/google-slides-automation/)：自动化 Google Slides 中的演示更新。
 - [`google-sheets-automation`](../../skills/google-sheets-automation/)：自动化 Google Sheets 中的读写操作。
 
@@ -575,7 +571,7 @@ _用于创建和维护高质量的 SKILL.md 资产。_
 
 ## 贡献
 
-发现应该在捆绑包中的技能？或者想创建新的捆绑包？[提交 issue](https://github.com/sickn33/antigravity-awesome-skills/issues)或提交 PR！
+发现应该在捆绑包中的技能？或者想创建新的捆绑包？[提交 issue](https://github.com/sickn33/agentic-awesome-skills/issues)或提交 PR！
 
 ---
 
@@ -587,4 +583,4 @@ _用于创建和维护高质量的 SKILL.md 资产。_
 
 ---
 
-_最后更新：2026 年 3 月 | 总技能数：1,494+ | 总捆绑包数：37_
+_最后更新：2026 年 6 月 | 总技能数：1,936+ | 编辑捆绑包数：59_

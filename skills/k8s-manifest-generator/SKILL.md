@@ -1,7 +1,7 @@
 ---
 name: k8s-manifest-generator
 description: "Step-by-step guidance for creating production-ready Kubernetes manifests including Deployments, Services, ConfigMaps, Secrets, and PersistentVolumeClaims."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -25,6 +25,10 @@ Use this skill when you need to:
 
 - The task is unrelated to kubernetes manifest generator
 - You need a different domain or tool outside this scope
+
+## Deployment boundaries
+
+These are illustrative fragments, not validated production manifests. Resolve placeholders, pin images, select supported APIs/controllers for the target cluster, and verify ServiceAccount, storage, secrets, ports and probes. Generating files does not authorize kubectl apply, debug Pods, load balancers, migrations or credential reads. Confirm target context and namespace before authorized operations; server dry-run still contacts admission webhooks. Keep secrets out of Git and logs. ConfigMap/Secret environment updates do not refresh existing processes automatically. Replicas and maxUnavailable alone do not guarantee availability. Never apply all template variants together.
 
 ## Instructions
 

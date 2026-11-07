@@ -1,284 +1,123 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const yaml = require("yaml");
+const root = path.resolve(__dirname,"../../..");
+const read = file => fs.readFileSync(path.join(root,file),"utf8");
+const load = file => yaml.parse(read(`.github/workflows/${file}.yml`));
+const ci = load("ci"), hygiene = load("repo-hygiene"), candidate = load("distribution-candidate"), publish = load("publish-npm"), pages = load("pages"), catalog = load("catalog-distribution");
+const commands = job => (job.steps || []).map(step=>step.run || "").join("\n");
+for (const name of ["pr-policy","pr-evidence","source-validation","artifact-preview"]) assert.ok(ci.jobs[name]);
+assert.equal(ci.on.pull_request.paths,undefined,"required workflows must not be path filtered");
+assert.match(commands(ci.jobs["pr-policy"]), /trusted_root/);
+assert.match(commands(ci.jobs["source-validation"]), /maintenance_validate\.cjs --base "\$BASE_SHA" --head "\$HEAD_SHA"/);
+assert.match(commands(ci.jobs["artifact-preview"]), /manifest/);
+for (const job of [ci.jobs["main-validation-and-sync"],hygiene.jobs["source-health"]]) {
+  assert.match(commands(job), /maintenance_validate\.cjs/);
+  assert.doesNotMatch(commands(job), /create-pull-request|merge_canonical|git push|sync:repo-state/);
+}
+assert.deepEqual(ci.jobs["main-validation-and-sync"].permissions,{contents:"read"});
+assert.deepEqual(hygiene.permissions,{contents:"read"});
+for (const command of ["distribution:verify","sync:release-state","validate:strict","validate:glossary","validate:references","security:docs","security:scan:strict","plugin-compat:check","bundles:check"])
+  assert.ok(commands(candidate.jobs.runtime).includes(`npm run ${command}`),`candidate must execute ${command}`);
+assert.match(commands(candidate.jobs.build),/release_parallel_checks\.cjs/);
+const parallelStep=candidate.jobs.build.steps.find(s=>s.run?.includes('release_parallel_checks.cjs'));
+assert.equal(parallelStep.env.AAS_TEST_CANDIDATE_TARBALL,'${{ runner.temp }}/distribution/package.tgz');
+assert.equal(parallelStep.env.VITE_BASE_PATH,'/');
+assert.equal(parallelStep.env.SEO_SITE_URL,'https://aaskills.tech');
+const {commandsFor}=require('../maintenance_validate.cjs');
+assert.deepEqual(commandsFor('test',root),[['npm',['run','test']]]);
+assert.deepEqual(commandsFor('web',root),[['npm',['run','app:install']],['npm',['run','app:ci']]]);
+assert.match(read('tools/scripts/release_parallel_checks.cjs'),/'audit','--audit-level=high'/);
+assert.match(read('tools/scripts/release_parallel_checks.cjs'),/'verify:seo'/);
+assert.match(read('tools/scripts/web_ci.cjs'),/test:coverage/);
+assert.match(read('tools/scripts/web_ci.cjs'),/build:finalize/);
+assert.match(commands(candidate.jobs.runtime),/git merge-base --is-ancestor HEAD origin\/main/);
+assert.match(commands(candidate.jobs.runtime),/distribution_pack\.cjs/,"the candidate must pack through the release-identity-aware packer");
+assert.doesNotMatch(commands(candidate.jobs.build),/npm pack/,"the candidate must not pack a tarball without recording gitHead");
+assert.match(commands(candidate.jobs.build),/distribution_manifest\.cjs create/);
+assert.deepEqual([...new Set(candidate.jobs.functional.strategy.matrix.include.map(job => job.os))],["ubuntu-24.04","windows-2025"]);
+assert.deepEqual([...new Set(candidate.jobs.functional.strategy.matrix.include.map(job => job.node))],["22.23.1","24.22.1"]);
+assert.match(commands(candidate.jobs.functional),/distribution_manifest\.cjs verify-runtime/);
+assert.match(commands(candidate.jobs.functional),/run-installed-candidate\.mjs/);
+for (const workflow of [publish,pages]) {
+  const all = Object.values(workflow.jobs).map(commands).join("\n");
+  assert.match(all,/distribution_fetch\.cjs/);
+  assert.doesNotMatch(all,/npm run (test|app:build|sync:release-state)|npm pack/);
+}
+assert.deepEqual(Object.keys(publish.on),["workflow_dispatch"]);
+assert.deepEqual(Object.keys(publish.on.workflow_dispatch.inputs),["tag","commit"]);
+assert.equal(publish["run-name"],"Publish npm ${{ inputs.tag }} at ${{ inputs.commit }}");
+assert.match(commands(publish.jobs.publish),/git merge-base --is-ancestor "\$tag_commit" "\$main_commit"/);
+assert.match(commands(publish.jobs.publish),/test "\$tag_commit" = "\$RELEASE_COMMIT"/);
+assert.match(commands(publish.jobs.publish),/npm publish "\$candidate" --ignore-scripts --tag "\$tag"/);
+assert.match(commands(publish.jobs.publish),/then tag=next; else tag=latest/);
+assert.match(commands(publish.jobs.publish),/verify_npm_candidate\.cjs/);
+assert.deepEqual(pages.on.workflow_dispatch.inputs.deployment_target.options,["release"]);
+assert.match(commands(pages.jobs.build),/\.draft == false/);
+assert.match(commands(pages.jobs.build),/tag_commit[^\n]+GITHUB_SHA/);
+assert.match(commands(pages.jobs.build),/site.tar/);
+assert.equal(catalog.jobs.candidate.if,"github.ref == 'refs/heads/main'");
+assert.doesNotMatch(Object.values(catalog.jobs).map(commands).join("\n"),/npm publish|npm version/);
+assert.match(commands(catalog.jobs.candidate),/catalog_distribution_verify\.cjs/);
+assert.deepEqual(catalog.jobs.deploy.needs,["candidate","publish"]);
+for (const workflow of [ci,hygiene,candidate,publish,pages,catalog]) {
+  for (const job of Object.values(workflow.jobs)) for (const step of job.steps || []) {
+    if (step.uses && !step.uses.startsWith("./")) assert.match(step.uses,/@[a-f0-9]{40}$/,"actions must be immutable");
+    if (step.run) assert.doesNotMatch(step.run,/git push origin (?:main|HEAD)|--admin/);
+  }
+}
+const pkg=JSON.parse(read("package.json"));
+assert.match(pkg.scripts.prepack,/distribution_snapshot/);
+assert.match(pkg.scripts["sync:release-state"],/chain.*sync:web-assets.*audit:consistency.*check:warning-budget/);
+assert.match(read("tools/scripts/release_workflow.js"),/distribution_snapshot\.cjs.*seal/);
+console.log("Component, snapshot and immutable publication workflow contracts passed");
 
-const repoRoot = path.resolve(__dirname, "..", "..", "..");
-
-function readText(relativePath) {
-  return fs.readFileSync(path.join(repoRoot, relativePath), "utf8").replace(/\r\n/g, "\n");
+const previewPrepared = yaml.parse(fs.readFileSync(path.join(root,".github/workflows/aas-agent-first-preview.yml"),"utf8"));
+assert.match(commands(previewPrepared.jobs.plan),/distribution_snapshot.cjs verify/);
+for (const job of ["candidate","workbench"]) {
+  assert.equal(previewPrepared.jobs[job].needs,"plan");
+  assert.match(previewPrepared.jobs[job].if,/run-preview == 'true'/);
 }
 
-const packageJson = JSON.parse(readText("package.json"));
-const generatedFiles = JSON.parse(readText("tools/config/generated-files.json"));
-const ciWorkflow = readText(".github/workflows/ci.yml");
-const publishWorkflow = readText(".github/workflows/publish-npm.yml");
-const releaseWorkflowScript = readText("tools/scripts/release_workflow.js");
-const hygieneWorkflowPath = path.join(repoRoot, ".github", "workflows", "repo-hygiene.yml");
+const catalogBootstrap = catalog.jobs.candidate.steps.find(step => step.name === "Verify immutable protected source and catalog compatibility").run;
+assert(catalogBootstrap.indexOf("npm ci --ignore-scripts") >= 0);
+assert(catalogBootstrap.indexOf("npm ci --ignore-scripts") < catalogBootstrap.indexOf("catalog-release"), "install dependencies before loading the schema-backed compatibility verifier");
 
-assert.ok(
-  packageJson.scripts["sync:release-state"],
-  "package.json should expose a deterministic release-state sync command",
-);
-assert.ok(
-  packageJson.scripts["check:warning-budget"],
-  "package.json should expose a warning-budget guardrail command",
-);
-assert.ok(
-  packageJson.scripts["check:readme-credits"],
-  "package.json should expose a README credit validation command",
-);
-assert.ok(
-  packageJson.scripts["merge:batch"],
-  "package.json should expose a maintainer merge-batch command",
-);
-assert.ok(
-  packageJson.scripts["audit:maintainer"],
-  "package.json should expose a maintainer audit command",
-);
-assert.ok(
-  packageJson.scripts["sync:web-assets"],
-  "package.json should expose a web-asset sync command for tracked web artifacts",
-);
-assert.match(
-  packageJson.scripts["sync:release-state"],
-  /sync:web-assets/,
-  "sync:release-state should refresh tracked web assets before auditing release drift",
-);
-assert.match(
-  packageJson.scripts["sync:release-state"],
-  /check:warning-budget/,
-  "sync:release-state should enforce the frozen validation warning budget",
-);
-assert.match(
-  packageJson.scripts["sync:repo-state"],
-  /sync:web-assets/,
-  "sync:repo-state should refresh tracked web assets before maintainer audits",
-);
-assert.match(
-  packageJson.scripts["sync:repo-state"],
-  /check:warning-budget/,
-  "sync:repo-state should enforce the frozen validation warning budget",
-);
-assert.strictEqual(
-  packageJson.scripts["app:install"],
-  "cd apps/web-app && npm ci",
-  "app:install should use npm ci for deterministic web-app installs",
-);
+for (const [name, job] of Object.entries(ci.jobs)) {
+ for (const step of job.steps || []) {
+  if (!(step.uses || '').startsWith('actions/checkout@')) continue;
+  if (step.with?.['fetch-depth'] === 0) assert.equal(step.with.filter, 'blob:none', name + ': retain full history without eager historical blobs');
+  if (step.with?.['sparse-checkout']) assert.equal(step.with.filter, undefined, 'filter must not override sparse checkout');
+ }
+}
+for (const name of ['source-validation', 'main-validation-and-sync']) {
+ assert.match(commands(ci.jobs[name]), /maintenance_validate\.cjs[^\n]* --parallel/);
+}
+assert.doesNotMatch(commands(ci.jobs['source-validation']), /--shard|turbo run|vercel/);
 
-for (const filePath of [
-  "apps/web-app/public/sitemap.xml",
-  "apps/web-app/public/skills.json.backup",
-  "data/plugin-compatibility.json",
-  ".agents/plugins/",
-  ".claude-plugin/plugin.json",
-  ".claude-plugin/marketplace.json",
-  "plugins/",
-]) {
-  assert.ok(
-    generatedFiles.derivedFiles.includes(filePath),
-    `generated-files derivedFiles should include ${filePath}`,
-  );
+for (const name of ["source-validation", "main-validation-and-sync"]) {
+ assert.equal(ci.jobs[name].env.AAS_TEST_COHORT_WORKERS, "2");
 }
 
-const webAppGitignore = readText("apps/web-app/.gitignore");
-assert.match(
-  webAppGitignore,
-  /^coverage$/m,
-  "web-app coverage output should be ignored so maintainer sync jobs stay clean",
-);
-
-for (const filePath of [
-  "README.md",
-  "package.json",
-  "docs/users/getting-started.md",
-  "docs/users/bundles.md",
-  "docs/users/claude-code-skills.md",
-  "docs/users/gemini-cli-skills.md",
-  "docs/users/usage.md",
-  "docs/users/visual-guide.md",
-  "docs/users/kiro-integration.md",
-  "docs/maintainers/repo-growth-seo.md",
-  "docs/maintainers/skills-update-guide.md",
-  "docs/integrations/jetski-cortex.md",
-  "docs/integrations/jetski-gemini-loader/README.md",
-]) {
-  assert.ok(
-    generatedFiles.mixedFiles.includes(filePath),
-    `generated-files mixedFiles should include ${filePath}`,
-  );
+const metadata=load('pr-metadata');
+assert.deepEqual(ci.on.pull_request.types,['opened','synchronize','reopened']);
+assert.deepEqual(metadata.on.pull_request.types,['edited','ready_for_review','converted_to_draft']);
+assert.deepEqual(Object.keys(metadata.jobs),['pr-policy','pr-evidence','technical-plan','source-validation','artifact-preview']);
+assert.equal(metadata.concurrency['cancel-in-progress'],false,'metadata corrections must not cancel first technical execution');
+for(const name of ['source-validation','artifact-preview']) {
+ assert.deepEqual(metadata.jobs[name].steps,ci.jobs[name].steps,'first technical execution retains all original steps');
+ assert.match(metadata.jobs[name].name,/metadata-.*-reuse/,'skipped fallback must never shadow required check names');
+ assert.equal(metadata.jobs[name].if,"needs.technical-plan.outputs.needed == 'true'");
 }
-
-assert.match(
-  ciWorkflow,
-  /- name: Run repo-state sync[\s\S]*?run: npm run sync:repo-state/,
-  "main CI should use the unified repo-state sync command",
-);
-assert.match(
-  ciWorkflow,
-  /GH_TOKEN: \$\{\{ github\.token \}\}/,
-  "main CI should provide GH_TOKEN for contributor synchronization",
-);
-assert.match(
-  ciWorkflow,
-  /main-validation-and-sync:[\s\S]*?concurrency:[\s\S]*?group: canonical-main-sync[\s\S]*?cancel-in-progress: false/,
-  "main validation should serialize canonical sync writers",
-);
-assert.match(
-  ciWorkflow,
-  /pip install -r tools\/requirements\.txt/g,
-  "CI workflows should install Python dependencies from tools/requirements.txt",
-);
-assert.match(
-  ciWorkflow,
-  /- name: Audit npm dependencies[\s\S]*?run: npm audit --audit-level=high/,
-  "CI should run npm audit at high severity",
-);
-assert.match(
-  ciWorkflow,
-  /source-validation:[\s\S]*?- uses: actions\/checkout@v\d+[\s\S]*?with:[\s\S]*?fetch-depth: 0/,
-  "source-validation should use an unshallowed checkout so base-branch diffs have a merge base",
-);
-assert.match(
-  ciWorkflow,
-  /source-validation:[\s\S]*?- name: Fetch base branch[\s\S]*?run: git fetch origin "\$\{\{ github\.base_ref \}\}"/,
-  "source-validation should fetch the PR base branch before changed-skill README credit checks",
-);
-assert.match(
-  ciWorkflow,
-  /- name: Verify README source credits for changed skills[\s\S]*?run: npm run check:readme-credits -- --base "origin\/\$\{\{ github\.base_ref \}\}" --head HEAD/,
-  "PR CI should verify README source credits for changed skills",
-);
-assert.match(
-  ciWorkflow,
-  /source-validation:[\s\S]*?- name: Fetch base branch[\s\S]*?- name: Install npm dependencies[\s\S]*?- name: Verify README source credits for changed skills/,
-  "source-validation should fetch the base branch before running the changed-skill README credit check",
-);
-assert.match(
-  ciWorkflow,
-  /main-validation-and-sync:[\s\S]*?- name: Audit npm dependencies[\s\S]*?run: npm audit --audit-level=high/,
-  "main validation should enforce npm audit before syncing canonical state",
-);
-assert.doesNotMatch(
-  ciWorkflow,
-  /main-validation-and-sync:[\s\S]*?continue-on-error: true/,
-  "main validation should not treat high-severity npm audit findings as non-blocking",
-);
-assert.doesNotMatch(
-  ciWorkflow,
-  /^      - name: Generate index$/m,
-  "main CI should not keep the old standalone Generate index step",
-);
-assert.doesNotMatch(
-  ciWorkflow,
-  /^      - name: Update README$/m,
-  "main CI should not keep the old standalone Update README step",
-);
-assert.doesNotMatch(
-  ciWorkflow,
-  /^      - name: Build catalog$/m,
-  "main CI should not keep the old standalone Build catalog step",
-);
-assert.match(
-  ciWorkflow,
-  /git commit -m "chore: sync repo state \[ci skip\]"/,
-  "main CI should keep bot-generated canonical sync commits out of the normal CI loop",
-);
-assert.match(
-  ciWorkflow,
-  /git ls-files --others --exclude-standard/,
-  "main CI should fail if canonical sync leaves unmanaged untracked drift",
-);
-assert.match(
-  ciWorkflow,
-  /git diff --name-only/,
-  "main CI should fail if canonical sync leaves unmanaged tracked drift",
-);
-
-assert.ok(fs.existsSync(hygieneWorkflowPath), "repo hygiene workflow should exist");
-
-const hygieneWorkflow = readText(".github/workflows/repo-hygiene.yml");
-assert.match(hygieneWorkflow, /^on:\n  workflow_dispatch:\n  schedule:/m, "repo hygiene workflow should support schedule and manual runs");
-assert.match(
-  hygieneWorkflow,
-  /concurrency:\n\s+group: canonical-main-sync\n\s+cancel-in-progress: false/,
-  "repo hygiene workflow should serialize canonical sync writers with main CI",
-);
-assert.match(
-  hygieneWorkflow,
-  /GH_TOKEN: \$\{\{ github\.token \}\}/,
-  "repo hygiene workflow should provide GH_TOKEN for gh-based contributor sync",
-);
-assert.match(
-  hygieneWorkflow,
-  /pip install -r tools\/requirements\.txt/,
-  "repo hygiene workflow should install Python dependencies from tools/requirements.txt",
-);
-assert.match(
-  hygieneWorkflow,
-  /run: npm audit --audit-level=high/,
-  "repo hygiene workflow should block on high-severity npm audit findings before syncing",
-);
-assert.match(
-  hygieneWorkflow,
-  /run: npm run sync:repo-state/,
-  "repo hygiene workflow should run the unified repo-state sync command",
-);
-assert.match(
-  hygieneWorkflow,
-  /generated_files\.js --include-mixed/,
-  "repo hygiene workflow should resolve and stage the mixed generated files contract",
-);
-assert.match(
-  hygieneWorkflow,
-  /git commit -m "chore: scheduled repo hygiene sync \[ci skip\]"/,
-  "repo hygiene workflow should keep bot-generated sync commits out of the normal CI loop",
-);
-assert.match(
-  hygieneWorkflow,
-  /git ls-files --others --exclude-standard/,
-  "repo hygiene workflow should fail if canonical sync leaves unmanaged untracked drift",
-);
-assert.match(
-  hygieneWorkflow,
-  /git diff --name-only/,
-  "repo hygiene workflow should fail if canonical sync leaves unmanaged tracked drift",
-);
-
-assert.match(publishWorkflow, /run: npm ci/, "npm publish workflow should install dependencies");
-assert.match(
-  publishWorkflow,
-  /pip install -r tools\/requirements\.txt/,
-  "npm publish workflow should install Python dependencies from tools/requirements.txt",
-);
-assert.match(
-  publishWorkflow,
-  /run: npm audit --audit-level=high/,
-  "npm publish workflow should block on high-severity npm audit findings",
-);
-assert.match(
-  publishWorkflow,
-  /run: npm run app:install/,
-  "npm publish workflow should install web-app dependencies before building",
-);
-assert.match(
-  publishWorkflow,
-  /run: npm run sync:release-state/,
-  "npm publish workflow should verify canonical release artifacts",
-);
-assert.match(
-  publishWorkflow,
-  /run: git diff --exit-code/,
-  "npm publish workflow should fail if canonical sync would leave release drift",
-);
-assert.match(publishWorkflow, /run: npm run test/, "npm publish workflow should run tests before publish");
-assert.match(publishWorkflow, /run: npm run app:build/, "npm publish workflow should build the app before publish");
-assert.match(
-  releaseWorkflowScript,
-  /runCommand\("npm", \["run", "app:install"\], projectRoot\);[\s\S]*runCommand\("npm", \["run", "app:build"\], projectRoot\);/,
-  "release workflow should install web-app dependencies before building the app",
-);
-assert.match(
-  publishWorkflow,
-  /npm pack --dry-run --json/,
-  "npm publish workflow should dry-run package creation before publishing",
-);
+assert.deepEqual(metadata.jobs['pr-policy'].steps.slice(1),ci.jobs['pr-policy'].steps,'metadata must retain the exact protected policy implementation');
+assert.deepEqual(metadata.jobs['pr-evidence'].steps,ci.jobs['pr-evidence'].steps);
+assert.match(metadata.jobs['pr-policy'].steps[0].if,/changes.base/);
+assert.match(metadata.jobs['pr-policy'].steps[0].run,/exit 1/);
+assert.notEqual(metadata.concurrency.group,ci.concurrency.group,'body edits must not cancel source validation');
+assert.equal(candidate.jobs.build.needs,'runtime');
+assert.equal(candidate.jobs.functional.needs,'runtime');
+assert.match(commands(candidate.jobs.runtime),/create-runtime/);
+assert.match(commands(candidate.jobs.build),/verify-runtime/);
+assert.doesNotMatch(commands(candidate.jobs.build),/distribution_pack/,'site branch must consume identical runtime bytes');
+assert.equal(candidate.jobs.runtime.steps.find(s=>s.uses?.startsWith('actions/upload-artifact@')).with['retention-days'],1);

@@ -1,7 +1,7 @@
 ---
 name: cpp-pro
 description: Write idiomatic C++ code with modern features, RAII, smart pointers, and STL algorithms. Handles templates, move semantics, and performance optimization.
-risk: unknown
+risk: critical
 source: community
 date_added: '2026-02-27'
 ---
@@ -50,7 +50,7 @@ You are a C++ programming expert specializing in modern C++ and high-performance
 - CMakeLists.txt with appropriate C++ standard
 - Header files with proper include guards or #pragma once
 - Unit tests using Google Test or Catch2
-- AddressSanitizer/ThreadSanitizer clean output
+- Sanitizer commands and actual results when executed; label checks not run
 - Performance benchmarks using Google Benchmark
 - Clear documentation of template interfaces
 

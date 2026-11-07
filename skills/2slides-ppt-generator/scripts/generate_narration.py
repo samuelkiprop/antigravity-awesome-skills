@@ -8,20 +8,13 @@ import os
 import sys
 import json
 import argparse
-import requests
 from typing import Optional, Dict, Any, List
 
 
 API_BASE_URL = "https://2slides.com/api/v1"
 
-# Available voice options (30 voices)
-AVAILABLE_VOICES = [
-    "Puck", "Aoede", "Charon", "Kore", "Fenrir", "Phoebe", "Asteria",
-    "Luna", "Stella", "Theia", "Helios", "Atlas", "Clio", "Melpomene",
-    "Calliope", "Erato", "Euterpe", "Polyhymnia", "Terpsichore", "Thalia",
-    "Urania", "Zeus", "Hera", "Poseidon", "Athena", "Apollo", "Artemis",
-    "Ares", "Aphrodite", "Hephaestus"
-]
+from api_constants import NARRATION_VOICES
+AVAILABLE_VOICES = NARRATION_VOICES
 
 
 def get_api_key() -> str:
@@ -67,12 +60,13 @@ def generate_narration(
         - Cost: 210 credits per page (10 for text, 200 for audio)
         - Processing time: Varies by slide count
     """
+    import requests
+
     if api_key is None:
         api_key = get_api_key()
 
     if voice not in AVAILABLE_VOICES:
-        print(f"Warning: Voice '{voice}' not in known voices list", file=sys.stderr)
-        print(f"Available voices: {', '.join(AVAILABLE_VOICES)}", file=sys.stderr)
+        raise ValueError("Unsupported voice; use --list-voices")
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -94,7 +88,7 @@ def generate_narration(
     # Set reasonable timeout for narration generation
     timeout = 120
 
-    response = requests.post(url, headers=headers, json=payload, timeout=timeout)
+    response = requests.post(url, headers=headers, json=payload, timeout=timeout, allow_redirects=False)
     response.raise_for_status()
 
     result = response.json()

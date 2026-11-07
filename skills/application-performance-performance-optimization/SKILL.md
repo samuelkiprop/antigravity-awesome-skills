@@ -1,7 +1,7 @@
 ---
 name: application-performance-performance-optimization
 description: "Optimize end-to-end application performance with profiling, observability, and backend/frontend tuning. Use when coordinating performance optimization across the stack."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -22,6 +22,8 @@ Optimize application performance end-to-end using specialized performance and op
 - The task is a small localized fix with no broader performance goals
 - There is no access to metrics, tracing, or profiling data
 - The request is unrelated to performance or scalability
+
+The named Task tools and agent types are orchestration examples; verify that they exist in the client, or perform the corresponding analysis directly. Do not claim delegated work or measurements without actual outputs.
 
 ## Instructions
 
@@ -54,7 +56,7 @@ Optimize application performance end-to-end using specialized performance and op
 ### 3. User Experience Analysis
 
 - Use Task tool with subagent_type="performance-engineer"
-- Prompt: "Analyze user experience metrics for: $ARGUMENTS. Measure Core Web Vitals (LCP, FID, CLS), page load times, time to interactive, and perceived performance. Use Real User Monitoring (RUM) data if available. Identify user journeys with poor performance and their business impact."
+- Prompt: "Analyze user experience metrics for: $ARGUMENTS. Measure Core Web Vitals (LCP, INP, CLS), page load times, time to interactive, and perceived performance. Use Real User Monitoring (RUM) data if available. Identify user journeys with poor performance and their business impact."
 - Context: Performance baselines from step 1
 - Output: UX performance report, Core Web Vitals analysis, user impact assessment
 
@@ -144,10 +146,12 @@ Optimize application performance end-to-end using specialized performance and op
 - **budget_constraints**: Set maximum acceptable costs for infrastructure changes
 - **user_impact_tolerance**: "zero-downtime" | "maintenance-window" | "gradual-rollout"
 
-## Success Criteria
+## Example Success Criteria
+
+Agree workload-specific targets before testing; the figures below are examples, not universal requirements or promised improvements. Assess Core Web Vitals at the 75th percentile of field visits, separating mobile and desktop. INP replaced FID; lab load timings alone do not measure real interaction responsiveness.
 
 - **Response Time**: P50 < 200ms, P95 < 1s, P99 < 2s for critical endpoints
-- **Core Web Vitals**: LCP < 2.5s, FID < 100ms, CLS < 0.1
+- **Core Web Vitals**: LCP < 2.5s, INP ≤ 200ms, CLS < 0.1
 - **Throughput**: Support 2x current peak load with <1% error rate
 - **Database Performance**: Query P95 < 100ms, no queries > 1s
 - **Resource Utilization**: CPU < 70%, Memory < 80% under normal load
@@ -155,6 +159,12 @@ Optimize application performance end-to-end using specialized performance and op
 - **Monitoring Coverage**: 100% of critical paths instrumented with alerting
 
 Performance optimization target: $ARGUMENTS
+
+## Example
+
+**User request:**
+
+> Coordinate performance optimization across backend, frontend, and infrastructure.
 
 ## Limitations
 - Use this skill only when the task clearly matches the scope described above.

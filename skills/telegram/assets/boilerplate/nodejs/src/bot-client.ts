@@ -4,11 +4,8 @@ import express from 'express';
 export class TelegramBotClient {
   public bot: Telegraf;
 
-  constructor(token: string, webhookMode: boolean = false) {
+  constructor(token: string) {
     this.bot = new Telegraf(token);
-    if (webhookMode) {
-      this.bot.telegram.deleteWebhook({ drop_pending_updates: true }).catch(() => undefined);
-    }
   }
 
   async startPolling(): Promise<void> {
@@ -17,21 +14,25 @@ export class TelegramBotClient {
     console.log(`Bot @${me.username} (${me.first_name}) started with polling`);
   }
 
-  async startWebhook(port: number, webhookUrl: string, secret?: string): Promise<void> {
+  async startWebhook(port: number, webhookUrl: string, secret: string): Promise<void> {
+    if (!/^[A-Za-z0-9_-]{32,256}$/.test(secret)) {
+      throw new Error('WEBHOOK_SECRET must contain 32-256 random letters, digits, underscores, or hyphens');
+    }
     const app = express();
+    app.disable('x-powered-by');
     app.use(express.json());
 
-    app.post('/webhook', async (req, res) => {
-      if (secret) {
-        const headerSecret = req.headers['x-telegram-bot-api-secret-token'];
-        if (headerSecret !== secret) {
-          return res.sendStatus(403);
-        }
+    app.post('/webhook', async (req, res, next) => {
+      const headerSecret = req.headers['x-telegram-bot-api-secret-token'];
+      if (headerSecret !== secret) {
+        return res.sendStatus(403);
       }
 
-      await this.bot.handleUpdate(req.body, res);
-      if (!res.headersSent) {
-        res.sendStatus(200);
+      try {
+        await this.bot.handleUpdate(req.body, res);
+        if (!res.headersSent) res.sendStatus(200);
+      } catch (error) {
+        next(error);
       }
     });
 

@@ -1,7 +1,7 @@
 ---
 name: azure-ai-document-intelligence-ts
 description: "Extract text, tables, and structured data from documents using prebuilt and custom models."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -11,6 +11,8 @@ date_added: "2026-02-27"
 Extract text, tables, and structured data from documents using prebuilt and custom models.
 
 ## Installation
+
+Pin compatible REST SDK/API versions and confirm model availability in the target region. Document uploads and URL analysis disclose content to Azure and can incur charges: use only authorized documents, short-lived scoped SAS and approved retention settings. Never log extracted IDs, medical/bank data or SAS URLs. Confidence scores are not calibrated guarantees; validate material totals/dates against the original document and route uncertain results for review. Bound polling with a deadline/abort signal and inspect terminal operation status; casting a response type does not prove success.
 
 ```bash
 npm install @azure-rest/ai-document-intelligence @azure/identity
@@ -50,7 +52,7 @@ const client = DocumentIntelligence(
 );
 ```
 
-## Analyze Document (URL)
+## Analyze Document https://example.com
 
 ```typescript
 import DocumentIntelligence, {
@@ -152,6 +154,7 @@ const initialResponse = await client
     body: { urlSource: receiptUrl }
   });
 
+if (isUnexpected(initialResponse)) throw initialResponse.body.error;
 const poller = getLongRunningPoller(client, initialResponse);
 const result = (await poller.pollUntilDone()).body as AnalyzeOperationOutput;
 

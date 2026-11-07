@@ -14,8 +14,9 @@ from __future__ import annotations
 import argparse
 import os
 
-from collect_metadata import collect
+from collect_metadata import _require_bq_identifier, collect
 from push_metadata import push
+from _safe_paths import safe_output_json_path
 
 
 def main() -> None:
@@ -36,7 +37,7 @@ def main() -> None:
     # Push args
     parser.add_argument("--resource-uuid", default=os.getenv("MCD_RESOURCE_UUID"))
     parser.add_argument("--key-id", default=os.getenv("MCD_INGEST_ID"))
-    parser.add_argument("--key-token", default=os.getenv("MCD_INGEST_TOKEN"))
+    parser.add_argument("--key-token", choices=[], default=os.getenv("MCD_INGEST_TOKEN"))
     parser.add_argument("--batch-size", type=int, default=500)
     parser.add_argument("--push-result-file", default="metadata_push_result.json")
 
@@ -49,21 +50,28 @@ def main() -> None:
     if missing:
         parser.error(f"Missing required push arguments/env vars: {missing}")
 
+    manifest_path = str(safe_output_json_path(args.manifest_file))
+    push_result_path = str(safe_output_json_path(args.push_result_file))
+
+    args.project_id = _require_bq_identifier(args.project_id, "project_id")
+    args.datasets = [_require_bq_identifier(d, "dataset") for d in args.datasets or []] or None
+    args.tables = [_require_bq_identifier(t, "table") for t in args.tables or []] or None
+
     collect(
         project_id=args.project_id,
         datasets=args.datasets,
         tables=args.tables,
         only_freshness_and_volume=args.only_freshness_and_volume,
-        output_file=args.manifest_file,
+        output_file=manifest_path,
     )
 
     push(
-        input_file=args.manifest_file,
+        input_file=manifest_path,
         resource_uuid=args.resource_uuid,
         key_id=args.key_id,
         key_token=args.key_token,
         batch_size=args.batch_size,
-        output_file=args.push_result_file,
+        output_file=push_result_path,
     )
 
 

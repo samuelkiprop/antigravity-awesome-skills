@@ -1,7 +1,7 @@
 ---
 name: azure-identity-ts
 description: "Authenticate to Azure services with various credential types."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -58,7 +58,7 @@ const blobClient = new BlobServiceClient(
 );
 ```
 
-**Credential Chain Order:**
+**Historical credential-chain sketch (verify installed SDK version/plugins):**
 1. EnvironmentCredential
 2. WorkloadIdentityCredential
 3. ManagedIdentityCredential
@@ -283,6 +283,8 @@ class CustomCredential implements TokenCredential {
 ```
 
 ## Debugging
+
+Use verbose identity logging only in an approved private diagnostic context, redact tenant/account/token-sensitive output and restore the normal log level afterward. Verify the selected identity and tenant; a successful credential chain does not establish that the intended principal was used.
 
 ```typescript
 import { setLogLevel, AzureLogger } from "@azure/logger";

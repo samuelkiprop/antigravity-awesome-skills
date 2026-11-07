@@ -13,40 +13,55 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import os
 import csv
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+def safe_user_path(path_value, base_dir="."):
+    """Resolve a CLI path under the current workspace."""
+    if base_dir != ".":
+        raise ValueError("Custom base directories are not supported for CLI paths")
+    base_path = Path.cwd().resolve()
+    resolved_path = Path(path_value).expanduser().resolve()
+    try:
+        resolved_path.relative_to(base_path)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes allowed directory: {path_value}") from exc
+    return resolved_path
 from typing import List, Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 from db import Database
+from private_state import state_dir, new_export
 
-OUTPUT_DIR = Path(__file__).parent.parent / "data" / "exports"
+OUTPUT_DIR = state_dir() / "exports"
+
+
+def spreadsheet_safe_cell(value):
+    """Neutralize strings that spreadsheet programs can interpret as formulas."""
+    if isinstance(value, str) and re.match(r"^[\x00-\x20]*[=+@-]", value):
+        return "'" + value
+    return value
 
 
 def export_json(records: list, output_dir: Path, suffix: str = "") -> Path:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    path = output_dir / f"leiloeiros{suffix}_{ts}.json"
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(
-            {"exported_at": datetime.now(timezone.utc).isoformat(), "total": len(records), "data": records},
-            f,
-            ensure_ascii=False,
-            indent=2,
-        )
+    path, descriptor = new_export(output_dir, suffix, "json")
+    payload = {"exported_at": datetime.now(timezone.utc).isoformat(), "total": len(records), "data": records}
+    with os.fdopen(descriptor, "w", encoding="utf-8") as f:
+        f.write(json.dumps(payload, ensure_ascii=False, indent=2))
     print(f"[JSON] {len(records)} registros → {path}")
     return path
 
 
 def export_jsonl(records: list, output_dir: Path, suffix: str = "") -> Path:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    path = output_dir / f"leiloeiros{suffix}_{ts}.jsonl"
-    with open(path, "w", encoding="utf-8") as f:
+    path, descriptor = new_export(output_dir, suffix, "jsonl")
+    with os.fdopen(descriptor, "w", encoding="utf-8") as f:
         for rec in records:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
     print(f"[JSONL] {len(records)} registros → {path}")
@@ -58,14 +73,13 @@ def export_csv(records: list, output_dir: Path, suffix: str = "") -> Path:
         print("[CSV] Nenhum registro para exportar.")
         return None
 
-    output_dir.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    path = output_dir / f"leiloeiros{suffix}_{ts}.csv"
+    path, descriptor = new_export(output_dir, suffix, "csv")
 
-    with open(path, "w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.DictWriter(f, fieldnames=list(records[0].keys()), extrasaction="ignore")
+    with os.fdopen(descriptor, "w", newline="", encoding="utf-8-sig") as f:
+        fieldnames = list(records[0].keys())
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
-        writer.writerows(records)
+        writer.writerows({key: spreadsheet_safe_cell(value) for key, value in record.items()} for record in records)
     print(f"[CSV] {len(records)} registros → {path}")
     return path
 
@@ -77,12 +91,11 @@ def export_parquet(records: list, output_dir: Path, suffix: str = "") -> Optiona
         print("[PARQUET] pandas não instalado. Execute: pip install pandas pyarrow")
         return None
 
-    output_dir.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    path = output_dir / f"leiloeiros{suffix}_{ts}.parquet"
+    path, descriptor = new_export(output_dir, suffix, "parquet")
 
     df = pd.DataFrame(records)
-    df.to_parquet(path, index=False, engine="pyarrow")
+    with os.fdopen(descriptor, "wb") as output:
+        df.to_parquet(output, index=False, engine="pyarrow")
     print(f"[PARQUET] {len(records)} registros → {path}")
     return path
 
@@ -106,7 +119,7 @@ def main():
     db = Database()
     db.init()
 
-    output_dir = Path(args.output)
+    output_dir = Path(args.output).expanduser().absolute()
     estados = [e.upper() for e in args.estado] if args.estado else None
 
     if estados:

@@ -1,7 +1,7 @@
 ---
 name: azure-ai-document-intelligence-dotnet
 description: Azure AI Document Intelligence SDK for .NET. Extract text, tables, and structured data from documents using prebuilt and custom models.
-risk: unknown
+risk: critical
 source: community
 date_added: '2026-02-27'
 ---
@@ -71,6 +71,8 @@ var client = new DocumentIntelligenceClient(new Uri(endpoint), new AzureKeyCrede
 | `prebuilt-healthInsuranceCard.us` | Extract health insurance card fields |
 
 ## Core Workflows
+
+Confirm the resource region/tenant and permission to send document contents to Azure before analysis or training. IDs, invoices and health documents may be highly sensitive: use approved sample data, do not log extracted personal fields or SAS URLs, and scope short-lived storage access to the required container. Pin the SDK/API version and verify supported models/field types and overloads in matching official samples; fragments are not a compiled application. A confidence score is not verified accuracy: reconcile fields with source pages and business rules before decisions. Training/analysis can incur cost; deletion must target only explicitly authorized models.
 
 ### 1. Analyze Invoice
 

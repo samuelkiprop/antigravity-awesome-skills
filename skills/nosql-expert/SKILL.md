@@ -1,7 +1,7 @@
 ---
 name: nosql-expert
 description: "Expert guidance for distributed NoSQL databases (Cassandra, DynamoDB). Focuses on mental models, query-first modeling, single-table design, and avoiding hot partitions in high-scale systems."
-risk: unknown
+risk: none
 source: community
 date_added: "2026-02-27"
 ---
@@ -69,7 +69,7 @@ Storing multiple entity types in one table to enable pre-joined reads.
 | `USER#123` | `ORDER#999` | `{ total: 12.00, status: "pending" }` |
 
 -   **Query:** `PK="USER#123"`
--   **Result:** Fetches User Profile AND all Orders in **one network request**.
+-   **Result:** Fetches profile and orders under that partition key; paginate until LastEvaluatedKey is absent rather than assuming all fit one response.
 
 ### 5. Denormalization & Duplication
 
@@ -84,7 +84,7 @@ Don't be afraid to store the same data in multiple tables to serve different que
 ### Apache Cassandra / ScyllaDB
 
 -   **Primary Key Structure:** `((Partition Key), Clustering Columns)`
--   **No Joins, No Aggregates:** Do not try to `JOIN` or `GROUP BY`. Pre-calculate aggregates in a separate counter table.
+-   **No joins; constrained aggregation:** CQL supports aggregates and GROUP BY over allowed primary-key prefixes. Check bounded scan cost; precompute only where access patterns justify the consistency/repair tradeoff.
 -   **Avoid `ALLOW FILTERING`:** If you see this in production, your data model is wrong. It implies a full cluster scan.
 -   **Writes are Cheap:** Inserts and Updates are just appends to the LSM tree. Don't worry about write volume as much as read efficiency.
 -   **Tombstones:** Deletes are expensive markers. Avoid high-velocity delete patterns (like queues) in standard tables.
@@ -95,7 +95,7 @@ Don't be afraid to store the same data in multiple tables to serve different que
     -   *Note:* GSIs are eventually consistent.
 -   **LSI (Local Secondary Index):** Sorts data differently *within* the same partition. Must be created at table creation time.
 -   **WCU / RCU:** Understand capacity modes. Single-table design helps optimize consumed capacity units.
--   **TTL:** Use Time-To-Live attributes to automatically expire old data (free delete) without creating tombstones.
+-   **TTL:** Expiration is asynchronous; exclude expired items in application reads where required and verify replication charges. Do not use TTL as an exact deletion-time guarantee or apply Cassandra tombstone semantics to DynamoDB.
 
 ## Expert Checklist
 
@@ -103,7 +103,7 @@ Before finalizing your NoSQL schema:
 
 -   [ ] **Access Pattern Coverage:** Does every query pattern map to a specific table or index?
 -   [ ] **Cardinality Check:** Does the Partition Key have enough unique values to spread traffic evenly?
--   [ ] **Split Partition Risk:** For any single partition (e.g., a single user's orders), will it grow indefinitely? (If > 10GB, you need to "shard" the partition, e.g., `USER#123#2024-01`).
+-   [ ] **Split Partition Risk:** For any single partition (e.g., a single user's orders), will it grow indefinitely? (DynamoDB’s 10 GB item-collection cap applies when LSIs exist; other engines and configurations have different constraints. Bucket by time or shard only with a query/capacity plan.)
 -   [ ] **Consistency Requirement:** Can the application tolerate eventual consistency for this read pattern?
 
 ## Common Anti-Patterns
@@ -111,6 +111,12 @@ Before finalizing your NoSQL schema:
 ❌ **Scatter-Gather:** Querying *all* partitions to find one item (Scan).
 ❌ **Hot Keys:** Putting all "Monday" data into one partition.
 ❌ **Relational Modeling:** Creating `Author` and `Book` tables and trying to join them in code. (Instead, embed Book summaries in Author, or duplicate Author info in Books).
+
+## Example
+
+**User request:**
+
+> Use @nosql-expert for this task: Expert guidance for distributed NoSQL databases (Cassandra, DynamoDB).
 
 ## Limitations
 - Use this skill only when the task clearly matches the scope described above.

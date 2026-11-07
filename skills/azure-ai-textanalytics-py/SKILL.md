@@ -1,7 +1,7 @@
 ---
 name: azure-ai-textanalytics-py
 description: Azure AI Text Analytics SDK for sentiment analysis, entity recognition, key phrases, language detection, PII, and healthcare NLP. Use for natural language processing on text.
-risk: unknown
+risk: critical
 source: community
 date_added: '2026-02-27'
 ---
@@ -49,6 +49,10 @@ client = TextAnalyticsClient(
     credential=DefaultAzureCredential()
 )
 ```
+
+## Data handling
+
+Calls send document text to Azure. Obtain authorization for private, PII or health data and verify region, retention and permitted use; redaction is probabilistic and does not guarantee de-identification. Healthcare extraction is not diagnosis. Examples are independent fragments; check each per-document error before consuming result fields.
 
 ## Sentiment Analysis
 
@@ -103,7 +107,7 @@ for doc in result:
     if not doc.is_error:
         print(f"Redacted: {doc.redacted_text}")
         for entity in doc.entities:
-            print(f"PII: {entity.text} ({entity.category})")
+            print(f"PII category: {entity.category}")  # Do not log detected sensitive values.
 ```
 
 ## Key Phrase Extraction

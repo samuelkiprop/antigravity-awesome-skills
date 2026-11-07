@@ -3,6 +3,7 @@ name: varlock
 description: "Secure-by-default environment variable management for Claude Code sessions."
 risk: critical
 source: "https://github.com/dmno-dev/varlock"
+date_added: "2026-03-06"
 version: 1.0.0
 ---
 
@@ -27,7 +28,7 @@ When working with Claude, secrets must NEVER appear in:
 - Git commits or diffs
 - Error messages
 
-This skill ensures all sensitive data is properly protected.
+This workflow reduces exposure only when sensitivity annotations and the invoked programs are correct; it cannot guarantee that child processes, errors or rendered application output never disclose secrets.
 
 ---
 
@@ -76,7 +77,8 @@ varlock load
 curl -H "Authorization: Bearer sk_live_xxx" https://api.example.com
 
 # ✅ DO THIS - use environment variable
-curl -H "Authorization: Bearer $API_KEY" https://api.example.com
+# Expanding a secret into curl arguments can expose it to process inspection.
+# Prefer an application/HTTP client that reads credentials internally from the environment.
 # Or better: varlock run -- curl ...
 ```
 
@@ -91,7 +93,7 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 curl -sSfL https://varlock.dev/install.sh -o "$tmpdir/varlock-install.sh"
-sed -n '1,160p' "$tmpdir/varlock-install.sh"
+cat "$tmpdir/varlock-install.sh"  # review the full installer before executing
 sh "$tmpdir/varlock-install.sh" --force-no-brew
 
 # Add to PATH (add to ~/.zshrc or ~/.bashrc)
@@ -167,6 +169,8 @@ STRIPE_PUBLISHABLE_KEY=
 
 ---
 
+A schema may contain default values or executable expressions and is not automatically safe to print. Inspect metadata through a redacting workflow before exposing file contents. `varlock load` does not export variables into the parent shell: use `varlock run -- npm run build` when the build needs them. Validate actual CLI syntax against the pinned version; the rotation helper and external skill paths below are examples, not bundled files. Installer output in a Docker build is not a human review gate: pin and review the installer before the build.
+
 ## Safe Commands for Claude
 
 ### Validating Environment
@@ -190,7 +194,7 @@ varlock run -- npm start
 varlock run -- node script.js
 varlock run -- pytest
 
-# Secrets are available to the command but never printed
+# Child commands receive secrets and may print them; audit their logging and disable tracing
 ```
 
 ### Checking Schema (Safe)
@@ -249,7 +253,7 @@ varlock load
 # Install Varlock in container
 RUN tmpdir="$(mktemp -d)" \
     && curl -sSfL https://varlock.dev/install.sh -o "$tmpdir/varlock-install.sh" \
-    && sed -n '1,160p' "$tmpdir/varlock-install.sh" \
+    && cat "$tmpdir/varlock-install.sh" \
     && sh "$tmpdir/varlock-install.sh" --force-no-brew \
     && rm -rf "$tmpdir" \
     && ln -s /root/.varlock/bin/varlock /usr/local/bin/varlock
@@ -325,7 +329,7 @@ API_KEY=exec('op read "op://vault/item/field"')
 ```bash
 # In .env.schema
 # @type=string @sensitive
-DB_PASSWORD=exec('aws secretsmanager get-secret-value --secret-id prod/db')
+DB_PASSWORD=exec('aws secretsmanager get-secret-value --secret-id prod/db --query SecretString --output text')
 ```
 
 ### Environment-Specific Values
@@ -388,7 +392,7 @@ Add these to your package.json:
 {
   "scripts": {
     "env:validate": "varlock load",
-    "env:check": "varlock load --quiet || echo 'Environment validation failed'",
+    "env:check": "varlock load --quiet",
     "prestart": "varlock load --quiet",
     "start": "varlock run -- node server.js"
   }

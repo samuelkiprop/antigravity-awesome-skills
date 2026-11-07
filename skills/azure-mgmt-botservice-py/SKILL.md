@@ -1,7 +1,7 @@
 ---
 name: azure-mgmt-botservice-py
 description: Azure Bot Service Management SDK for Python. Use for creating, managing, and configuring Azure Bot Service resources.
-risk: unknown
+risk: critical
 source: community
 date_added: '2026-02-27'
 ---
@@ -239,7 +239,7 @@ keys = client.channels.list_with_keys(
 if hasattr(keys.properties, 'properties'):
     for site in keys.properties.properties.sites:
         print(f"Site: {site.site_name}")
-        print(f"Key: {site.key}")
+        # Do not print Direct Line keys; store only in approved secret storage.
 ```
 
 ## Bot Connections (OAuth)
@@ -247,6 +247,7 @@ if hasattr(keys.properties, 'properties'):
 ### Create Connection Setting
 
 ```python
+import os
 from azure.mgmt.botservice.models import (
     ConnectionSetting,
     ConnectionSettingProperties
@@ -260,7 +261,7 @@ connection = client.bot_connection.create(
         location="global",
         properties=ConnectionSettingProperties(
             client_id="<oauth-client-id>",
-            client_secret="<oauth-client-secret>",
+            client_secret=os.environ["BOT_OAUTH_CLIENT_SECRET"],
             scopes="User.Read",
             service_provider_id="<service-provider-id>"
         )
@@ -327,3 +328,5 @@ This skill is applicable to execute the workflow or actions described in the ove
 - Use this skill only when the task clearly matches the scope described above.
 - Do not treat the output as a substitute for environment-specific validation, testing, or expert review.
 - Stop and ask for clarification if required inputs, permissions, safety boundaries, or success criteria are missing.
+
+Management examples create/change real resources and channels: confirm subscription, resource group, bot/channel IDs and intended diff. Verify current supported identity/app types and channel/API versions before registering a new bot; a historical `MultiTenant` example does not establish current registration eligibility. F0 is a tier name, not a promise that every integration/channel is cost-free. Do not log channel keys or full management responses.

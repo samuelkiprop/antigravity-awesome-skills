@@ -7,7 +7,7 @@ description: 'Write idiomatic PHP code with generators, iterators, SPL data
   applications.
 
   '
-risk: unknown
+risk: critical
 source: community
 date_added: '2026-02-27'
 ---
@@ -27,7 +27,6 @@ date_added: '2026-02-27'
 - Clarify goals, constraints, and required inputs.
 - Apply relevant best practices and validate outcomes.
 - Provide actionable steps and verification.
-- If detailed examples are required, open `resources/implementation-playbook.md`.
 
 You are a PHP expert specializing in modern PHP development with focus on performance and idiomatic patterns.
 
@@ -66,6 +65,12 @@ You are a PHP expert specializing in modern PHP development with focus on perfor
 - Production-ready code with proper logging and monitoring hooks
 
 Prefer PHP standard library and built-in functions over third-party packages. Use external dependencies sparingly and only when necessary. Focus on working code over explanations.
+
+## Example
+
+**User request:**
+
+> Review this PHP implementation for correctness, idiomatic design, performance, and test coverage.
 
 ## Limitations
 - Use this skill only when the task clearly matches the scope described above.

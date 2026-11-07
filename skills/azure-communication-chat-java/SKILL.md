@@ -1,7 +1,7 @@
 ---
 name: azure-communication-chat-java
 description: "Build real-time chat applications with thread management, messaging, participants, and read receipts."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -9,6 +9,10 @@ date_added: "2026-02-27"
 # Azure Communication Chat (Java)
 
 Build real-time chat applications with thread management, messaging, participants, and read receipts.
+
+## Privacy and write scope
+
+Examples are independent SDK fragments, not a complete tested application. Pin the package version and verify imports/API signatures against it before compiling. Use approved test participants and a least-privilege user token; sending messages, read receipts or typing events, changing history visibility and deleting threads require the corresponding user instruction. Minimize pagination and do not print production message bodies, tokens or participant identifiers into shared logs. Render received HTML only with an appropriate sanitizer; server acceptance does not make it safe UI markup.
 
 ## Installation
 

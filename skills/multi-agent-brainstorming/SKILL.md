@@ -1,7 +1,7 @@
 ---
 name: multi-agent-brainstorming
 description: "Simulate a structured peer-review process using multiple specialized agents to validate designs, surface hidden assumptions, and identify failure modes before implementation."
-risk: unknown
+risk: none
 source: community
 date_added: "2026-02-27"
 ---
@@ -24,6 +24,8 @@ This is **not parallel brainstorming**.
 It is **sequential design review with enforced roles**.
 
 ---
+
+Distinguish actual independently invoked reviewers from one model simulating roles; never claim independent consensus from a role-play. Use only available host agents within authorized delegation scope. Set a maximum review/revision budget and end with APPROVED, REVISE or REJECT plus unresolved issues if convergence fails; missing reviewers cannot be counted as invoked. This review does not authorize implementation or safety certification.
 
 ## Operating Model
 
@@ -216,7 +218,7 @@ You may exit multi-agent brainstorming **only when all are true**:
 - All objections are resolved or explicitly rejected
 - Decision Log is complete
 - Arbiter has declared the design acceptable
-- 
+
 If any criterion is unmet:
 - Continue review
 - Do NOT proceed to implementation
@@ -254,6 +256,12 @@ If the answer is unclear, **do not exit this skill**.
 
 ## When to Use
 This skill is applicable to execute the workflow or actions described in the overview.
+
+## Example
+
+**User request:**
+
+> Use @multi-agent-brainstorming for this task: Simulate a structured peer-review process using multiple specialized agents to validate designs, surface hidden assumptions, and identify failure modes before implementation.
 
 ## Limitations
 - Use this skill only when the task clearly matches the scope described above.

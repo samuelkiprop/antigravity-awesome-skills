@@ -17,6 +17,19 @@ import os
 import re
 import sys
 from pathlib import Path
+
+
+def safe_user_path(path_value, base_dir="."):
+    """Resolve a CLI path under the current workspace."""
+    if base_dir != ".":
+        raise ValueError("Custom base directories are not supported for CLI paths")
+    base_path = Path.cwd().resolve()
+    resolved_path = Path(path_value).expanduser().resolve()
+    try:
+        resolved_path.relative_to(base_path)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes allowed directory: {path_value}") from exc
+    return resolved_path
 from typing import Dict, List, Optional, Any, Tuple
 
 
@@ -49,7 +62,7 @@ HEAVY_PACKAGES = {
     },
     "chart.js": {
         "size": "180KB",
-        "alternative": "recharts (bundled with React) or lightweight-charts",
+        "alternative": "A chart library suited to required charts; benchmark real output size",
         "reason": "Consider if you need all chart types"
     },
     "three": {
@@ -235,7 +248,7 @@ def analyze_imports(project_dir: Path) -> Dict:
 
         for ext in ["*.ts", "*.tsx", "*.js", "*.jsx"]:
             for file_path in src_dir.glob(f"**/{ext}"):
-                if "node_modules" in str(file_path):
+                if file_path.is_symlink() or not file_path.resolve().is_relative_to(project_dir.resolve()) or "node_modules" in str(file_path):
                     continue
 
                 files_checked += 1
@@ -297,7 +310,7 @@ def print_report(analysis: Dict) -> None:
     print("=" * 60)
     print("FRONTEND BUNDLE ANALYSIS REPORT")
     print("=" * 60)
-    print(f"\nBundle Health Score: {score}/100 ({grade})")
+    print(f"\nHeuristic Dependency Score (not measured bundle size): {score}/100 ({grade})")
 
     deps = analysis["dependencies"]
     print(f"\nDependencies: {deps['total_dependencies']} production, {deps['total_dev_dependencies']} dev")
@@ -342,7 +355,7 @@ def print_report(analysis: Dict) -> None:
     # Summary
     print("\n--- RECOMMENDATIONS ---")
     if score >= 90:
-        print("  Bundle is well-optimized!")
+        print("  No configured heuristics triggered; measure the built bundle before drawing conclusions.")
     elif deps["issues"]:
         print("  1. Replace heavy dependencies with lighter alternatives")
     if deps["warnings"]:
@@ -375,7 +388,7 @@ def main():
     )
 
     args = parser.parse_args()
-    project_dir = Path(args.project_dir).resolve()
+    project_dir = safe_user_path(args.project_dir).resolve()
 
     if not project_dir.exists():
         print(f"Error: Directory not found: {project_dir}", file=sys.stderr)

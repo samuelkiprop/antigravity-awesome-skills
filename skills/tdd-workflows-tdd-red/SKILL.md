@@ -1,7 +1,7 @@
 ---
 name: tdd-workflows-tdd-red
 description: "Generate failing tests for the TDD red phase to define expected behavior and edge cases."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -36,7 +36,7 @@ Write comprehensive failing tests following TDD red phase principles.
 
 ## Role
 
-Generate failing tests using Task tool with subagent_type="unit-testing::test-automator".
+Use the current project’s test framework and available tools. The upstream Task/subagent type is host-specific and not bundled; it does not authorize delegation. Produce the tests directly when no authorized matching agent exists.
 
 ## Prompt Template
 

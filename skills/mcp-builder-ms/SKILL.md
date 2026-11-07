@@ -1,7 +1,7 @@
 ---
 name: mcp-builder-ms
 description: "Use this skill when building MCP servers to integrate external APIs or services, whether in Python (FastMCP) or Node/TypeScript (MCP SDK)."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -16,6 +16,8 @@ Use this skill when building MCP servers to integrate external APIs or services,
 Create MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. The quality of an MCP server is measured by how well it enables LLMs to accomplish real-world tasks.
 
 ---
+
+The emoji-named implementation/evaluation guides below are not bundled in this tree. Resolve official SDK documentation rather than claiming those guides or scripts were read. Endpoint/service counts are examples and require current verification. stdio is a transport: its server can still make network requests. Tool annotations are hints, not authorization controls. Enforce tenant/identity checks, least privilege, input/output limits, timeouts and redacted errors in server code; remote services need the protocol’s supported authentication and request-origin protections. Never log protocol messages to stdout on stdio.
 
 ## Microsoft MCP Ecosystem
 
@@ -104,7 +106,7 @@ Key pages to review:
 | Transport | Use Case | Characteristics |
 |-----------|----------|-----------------|
 | **Streamable HTTP** | Remote servers, multi-tenant, Agent Service | Stateless, scalable, requires auth |
-| **stdio** | Local servers, desktop apps | Simple, single-user, no network |
+| **stdio** | Local servers, desktop apps | Simple local process transport; server may access networks |
 
 **Load framework documentation:**
 

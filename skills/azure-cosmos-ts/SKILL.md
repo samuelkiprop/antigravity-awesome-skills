@@ -1,7 +1,7 @@
 ---
 name: azure-cosmos-ts
 description: Azure Cosmos DB JavaScript/TypeScript SDK (@azure/cosmos) for data plane operations. Use for CRUD operations on documents, queries, bulk operations, and container management.
-risk: unknown
+risk: critical
 source: community
 date_added: '2026-02-27'
 ---
@@ -74,6 +74,8 @@ CosmosClient
 ```
 
 ## Core Operations
+
+Confirm account/database/container, tenant-bound authorization and write/delete scope first. Partition keys are routing, not authorization. Bound query pages, RU cost, retries and runtime; fetchAll may be unbounded. Bulk operations are not an all-or-nothing transaction: inspect each response/error and retry only eligible failed items with idempotency/concurrency checks. Pin SDK versions and verify examples against [Microsoft SDK docs](https://learn.microsoft.com/en-us/javascript/api/overview/azure/cosmos-readme).
 
 ### Database & Container Setup
 
@@ -268,10 +270,11 @@ const operations: OperationInput[] = [
 const response = await container.items.executeBulkOperations(operations);
 
 response.forEach((result, index) => {
-  if (result.statusCode >= 200 && result.statusCode < 300) {
+  const statusCode = result.response?.statusCode;
+  if (!result.error && statusCode !== undefined && statusCode >= 200 && statusCode < 300) {
     console.log(`Operation ${index} succeeded`);
   } else {
-    console.error(`Operation ${index} failed: ${result.statusCode}`);
+    console.error(`Operation ${index} failed: ${statusCode ?? result.error?.code ?? "unknown"}`);
   }
 });
 ```

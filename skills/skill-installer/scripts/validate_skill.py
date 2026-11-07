@@ -17,6 +17,22 @@ import json
 import re
 from pathlib import Path
 
+
+def safe_user_path(path_value, base_dir="."):
+    """Resolve a CLI path under the current workspace."""
+    if base_dir != ".":
+        raise ValueError("Custom base directories are not supported for CLI paths")
+    base_path = Path.cwd().resolve()
+    lexical = Path(path_value).expanduser().absolute()
+    if any(part.is_symlink() for part in (lexical, *lexical.parents)):
+        raise ValueError("Symlink paths are not supported")
+    resolved_path = lexical.resolve()
+    try:
+        resolved_path.relative_to(base_path)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes allowed directory: {path_value}") from exc
+    return resolved_path
+
 # ── Constants ──────────────────────────────────────────────────────────────
 
 FORBIDDEN_PATTERNS = [
@@ -37,8 +53,16 @@ FORBIDDEN_PATTERNS = [
 MAX_SIZE_MB = 50
 MIN_DESCRIPTION_LENGTH = 50
 
-SKILLS_ROOT = Path(r"C:\Users\renat\skills")
+SKILLS_ROOT = (Path.cwd() / "skills").resolve()
 REGISTRY_PATH = SKILLS_ROOT / "agent-orchestrator" / "data" / "registry.json"
+
+
+def resolve_existing_dir(path) -> Path:
+    """Resolve a user-provided directory and require it to exist."""
+    resolved = safe_user_path(path).expanduser().resolve()
+    if not resolved.is_dir():
+        raise ValueError(f"Directory does not exist: {resolved}")
+    return resolved
 
 
 # ── YAML Frontmatter Parser ───────────────────────────────────────────────
@@ -59,23 +83,28 @@ def parse_yaml_frontmatter(path: Path) -> dict:
 
     try:
         import yaml
-        return yaml.safe_load(match.group(1)) or {}
+        class UniqueLoader(yaml.SafeLoader):
+            pass
+        def mapping(loader, node):
+            result = {}
+            for key_node, value_node in node.value:
+                key = loader.construct_object(key_node)
+                if key in result:
+                    raise ValueError("Duplicate YAML key")
+                result[key] = loader.construct_object(value_node)
+            return result
+        UniqueLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, mapping)
+        data = yaml.load(match.group(1), Loader=UniqueLoader)
+        if not isinstance(data, dict):
+            return {}
+        if any(not isinstance(data.get(key), str) or not data[key].strip()
+               for key in ("name", "description")):
+            return {}
+        return data
+    except (ImportError, ValueError, TypeError):
+        return {}
     except Exception:
-        # Fallback: manual parsing
-        result = {}
-        block = match.group(1)
-        for key in ("name", "description", "version", "capabilities"):
-            m = re.search(rf'^{key}:\s*["\']?(.+?)["\']?\s*$', block, re.MULTILINE)
-            if m:
-                result[key] = m.group(1).strip()
-            else:
-                m2 = re.search(
-                    rf'^{key}:\s*>-?\s*\n((?:\s+.+\n?)+)', block, re.MULTILINE
-                )
-                if m2:
-                    lines = m2.group(1).strip().split("\n")
-                    result[key] = " ".join(line.strip() for line in lines)
-        return result
+        return {}
 
 
 # ── Validation Checks ─────────────────────────────────────────────────────
@@ -142,7 +171,7 @@ def check_frontmatter_parseable(skill_dir: Path) -> dict:
 def check_name_exists(meta: dict) -> dict:
     """Check 3: 'name' field exists and is non-empty."""
     name = meta.get("name", "")
-    has_name = bool(name and str(name).strip())
+    has_name = isinstance(name, str) and bool(re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name)) and len(name) <= 64
     return {
         "check": 3,
         "name": "Field 'name' present",
@@ -154,7 +183,7 @@ def check_name_exists(meta: dict) -> dict:
 def check_description_exists(meta: dict) -> dict:
     """Check 4: 'description' field exists and is non-empty."""
     desc = meta.get("description", "")
-    has_desc = bool(desc and str(desc).strip())
+    has_desc = isinstance(desc, str) and bool(desc.strip())
     return {
         "check": 4,
         "name": "Field 'description' present",
@@ -213,20 +242,26 @@ def check_name_matches_dir(skill_dir: Path, meta: dict) -> dict:
 def check_forbidden_files(skill_dir: Path) -> dict:
     """Check 7: No forbidden files (.env, credentials, keys, etc.)."""
     found_forbidden = []
+    for candidate in safe_user_path(skill_dir).rglob("*"):
+        if candidate.is_symlink() or (not candidate.is_dir() and not candidate.is_file()):
+            found_forbidden.append(str(candidate))
 
-    for root, _dirs, files in os.walk(skill_dir):
-        for f in files:
-            f_lower = f.lower()
-            for pattern in FORBIDDEN_PATTERNS:
-                if pattern.startswith("*."):
-                    ext = pattern[1:]  # e.g., ".key"
-                    if f_lower.endswith(ext):
-                        found_forbidden.append(os.path.join(root, f))
-                        break
-                else:
-                    if f_lower == pattern.lower():
-                        found_forbidden.append(os.path.join(root, f))
-                        break
+    for path in safe_user_path(skill_dir).rglob("*"):
+        if not path.is_file():
+            continue
+        f_lower = path.name.lower()
+        if (f_lower.startswith(".env.") and f_lower not in {".env.example", ".env.sample"}) or path.relative_to(skill_dir).as_posix().lower() == ".aws/credentials":
+            found_forbidden.append(str(path))
+        for pattern in FORBIDDEN_PATTERNS:
+            if pattern.startswith("*."):
+                ext = pattern[1:]  # e.g., ".key"
+                if f_lower.endswith(ext):
+                    found_forbidden.append(str(path))
+                    break
+            else:
+                if f_lower == pattern.lower():
+                    found_forbidden.append(str(path))
+                    break
 
     if found_forbidden:
         return {
@@ -247,12 +282,13 @@ def check_forbidden_files(skill_dir: Path) -> dict:
 def check_total_size(skill_dir: Path) -> dict:
     """Check 8: Total size is reasonable (warn if > 50MB)."""
     total = 0
-    for root, _dirs, files in os.walk(skill_dir):
-        for f in files:
-            try:
-                total += os.path.getsize(os.path.join(root, f))
-            except OSError:
-                pass
+    for path in safe_user_path(skill_dir).rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            total += path.stat().st_size
+        except OSError:
+            pass
 
     size_mb = total / (1024 * 1024)
     ok = size_mb <= MAX_SIZE_MB
@@ -304,8 +340,8 @@ def check_duplicate_name(meta: dict, registry_path: Path) -> dict:
         return {
             "check": 10,
             "name": "No duplicate in registry",
-            "status": "pass",
-            "message": "No registry.json found (skip check)",
+            "status": "skip",
+            "message": "Optional external registry absent; duplicate check not performed",
         }
 
     try:
@@ -347,16 +383,20 @@ def validate(skill_dir: Path, strict: bool = False, registry_path: Path = None) 
     if registry_path is None:
         registry_path = REGISTRY_PATH
 
-    skill_dir = Path(skill_dir).resolve()
-
-    if not skill_dir.exists():
+    try:
+        skill_dir = resolve_existing_dir(skill_dir)
+    except ValueError as e:
         return {
             "valid": False,
             "skill_dir": str(skill_dir),
             "checks": [],
             "warnings": [],
-            "errors": [f"Directory does not exist: {skill_dir}"],
+            "errors": [str(e)],
         }
+
+    for path in skill_dir.rglob("*"):
+        if path.is_symlink() or (not path.is_file() and not path.is_dir()):
+            return {"valid": False, "skill_dir": str(skill_dir), "checks": [], "warnings": [], "errors": ["Links and special files are not supported"]}
 
     # Parse frontmatter once
     skill_md = skill_dir / "SKILL.md"
@@ -411,14 +451,21 @@ def main():
         }, indent=2))
         sys.exit(1)
 
-    skill_dir = Path(sys.argv[1]).resolve()
+    try:
+        skill_dir = resolve_existing_dir(sys.argv[1])
+    except ValueError as e:
+        print(json.dumps({
+            "valid": False,
+            "error": str(e),
+        }, indent=2))
+        sys.exit(1)
     strict = "--strict" in sys.argv
     registry_path = None
 
     if "--registry" in sys.argv:
         idx = sys.argv.index("--registry")
         if idx + 1 < len(sys.argv):
-            registry_path = Path(sys.argv[idx + 1])
+            registry_path = safe_user_path(sys.argv[idx + 1]).expanduser().resolve()
 
     result = validate(skill_dir, strict=strict, registry_path=registry_path)
     print(json.dumps(result, indent=2, ensure_ascii=False))

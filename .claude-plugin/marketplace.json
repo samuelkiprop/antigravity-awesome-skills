@@ -1,24 +1,24 @@
 {
-  "name": "antigravity-awesome-skills",
+  "name": "agentic-awesome-skills",
   "owner": {
     "name": "sickn33 and contributors",
-    "url": "https://github.com/sickn33/antigravity-awesome-skills"
+    "url": "https://github.com/sickn33/agentic-awesome-skills"
   },
   "metadata": {
-    "description": "Claude Code marketplace entries for the plugin-safe Antigravity Awesome Skills library and its compatible editorial bundles.",
-    "version": "12.3.0"
+    "description": "Claude Code marketplace entries for the plugin-safe Agentic Awesome Skills library and its compatible editorial bundles.",
+    "version": "20.6.0"
   },
   "plugins": [
     {
-      "name": "antigravity-awesome-skills",
-      "version": "12.3.0",
-      "description": "Expose the plugin-safe Claude Code subset of Antigravity Awesome Skills through a single marketplace entry.",
+      "name": "agentic-awesome-skills",
+      "version": "20.6.0",
+      "description": "Expose the plugin-safe Claude Code subset of Agentic Awesome Skills through a single marketplace entry.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -27,18 +27,18 @@
         "plugin",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-awesome-skills-claude"
+      "source": "./plugins/agentic-awesome-skills-claude"
     },
     {
-      "name": "antigravity-bundle-essentials",
-      "version": "12.3.0",
+      "name": "agentic-bundle-essentials",
+      "version": "20.6.0",
       "description": "Install the \"Essentials\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -47,158 +47,18 @@
         "essentials",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-essentials"
+      "source": "./plugins/agentic-bundle-essentials"
     },
     {
-      "name": "antigravity-bundle-security-engineer",
-      "version": "12.3.0",
-      "description": "Install the \"Security Engineer\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "security-engineer",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-security-engineer"
-    },
-    {
-      "name": "antigravity-bundle-security-developer",
-      "version": "12.3.0",
-      "description": "Install the \"Security Developer\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "security-developer",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-security-developer"
-    },
-    {
-      "name": "antigravity-bundle-web-wizard",
-      "version": "12.3.0",
-      "description": "Install the \"Web Wizard\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "web-wizard",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-web-wizard"
-    },
-    {
-      "name": "antigravity-bundle-web-designer",
-      "version": "12.3.0",
-      "description": "Install the \"Web Designer\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "web-designer",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-web-designer"
-    },
-    {
-      "name": "antigravity-bundle-full-stack-developer",
-      "version": "12.3.0",
-      "description": "Install the \"Full-Stack Developer\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "full-stack-developer",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-full-stack-developer"
-    },
-    {
-      "name": "antigravity-bundle-agent-architect",
-      "version": "12.3.0",
-      "description": "Install the \"Agent Architect\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "agent-architect",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-agent-architect"
-    },
-    {
-      "name": "antigravity-bundle-llm-application-developer",
-      "version": "12.3.0",
-      "description": "Install the \"LLM Application Developer\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "llm-application-developer",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-llm-application-developer"
-    },
-    {
-      "name": "antigravity-bundle-indie-game-dev",
-      "version": "12.3.0",
+      "name": "agentic-bundle-indie-game-dev",
+      "version": "20.6.0",
       "description": "Install the \"Indie Game Dev\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -207,58 +67,18 @@
         "indie-game-dev",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-indie-game-dev"
+      "source": "./plugins/agentic-bundle-indie-game-dev"
     },
     {
-      "name": "antigravity-bundle-python-pro",
-      "version": "12.3.0",
-      "description": "Install the \"Python Pro\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "python-pro",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-python-pro"
-    },
-    {
-      "name": "antigravity-bundle-typescript-javascript",
-      "version": "12.3.0",
-      "description": "Install the \"TypeScript & JavaScript\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "typescript-javascript",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-typescript-javascript"
-    },
-    {
-      "name": "antigravity-bundle-systems-programming",
-      "version": "12.3.0",
+      "name": "agentic-bundle-systems-programming",
+      "version": "20.6.0",
       "description": "Install the \"Systems Programming\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -267,238 +87,58 @@
         "systems-programming",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-systems-programming"
+      "source": "./plugins/agentic-bundle-systems-programming"
     },
     {
-      "name": "antigravity-bundle-startup-founder",
-      "version": "12.3.0",
-      "description": "Install the \"Startup Founder\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "startup-founder",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-startup-founder"
-    },
-    {
-      "name": "antigravity-bundle-business-analyst",
-      "version": "12.3.0",
-      "description": "Install the \"Business Analyst\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "business-analyst",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-business-analyst"
-    },
-    {
-      "name": "antigravity-bundle-marketing-growth",
-      "version": "12.3.0",
-      "description": "Install the \"Marketing & Growth\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "marketing-growth",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-marketing-growth"
-    },
-    {
-      "name": "antigravity-bundle-devops-cloud",
-      "version": "12.3.0",
-      "description": "Install the \"DevOps & Cloud\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "devops-cloud",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-devops-cloud"
-    },
-    {
-      "name": "antigravity-bundle-observability-monitoring",
-      "version": "12.3.0",
-      "description": "Install the \"Observability & Monitoring\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "observability-monitoring",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-observability-monitoring"
-    },
-    {
-      "name": "antigravity-bundle-data-analytics",
-      "version": "12.3.0",
-      "description": "Install the \"Data & Analytics\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "data-analytics",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-data-analytics"
-    },
-    {
-      "name": "antigravity-bundle-data-engineering",
-      "version": "12.3.0",
-      "description": "Install the \"Data Engineering\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "data-engineering",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-data-engineering"
-    },
-    {
-      "name": "antigravity-bundle-creative-director",
-      "version": "12.3.0",
-      "description": "Install the \"Creative Director\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "creative-director",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-creative-director"
-    },
-    {
-      "name": "antigravity-bundle-qa-testing",
-      "version": "12.3.0",
-      "description": "Install the \"QA & Testing\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "qa-testing",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-qa-testing"
-    },
-    {
-      "name": "antigravity-bundle-aas-web-app-builder",
-      "version": "12.3.0",
+      "name": "agentic-bundle-web-app",
+      "version": "20.6.0",
       "description": "Install the \"AAS Web App Builder\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
         "skills",
         "bundle",
-        "aas-web-app-builder",
+        "web-app",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-aas-web-app-builder"
+      "source": "./plugins/agentic-bundle-web-app"
     },
     {
-      "name": "antigravity-bundle-aas-product-design-studio",
-      "version": "12.3.0",
+      "name": "agentic-bundle-design-studio",
+      "version": "20.6.0",
       "description": "Install the \"AAS Product Design Studio\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
         "skills",
         "bundle",
-        "aas-product-design-studio",
+        "design-studio",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-aas-product-design-studio"
+      "source": "./plugins/agentic-bundle-design-studio"
     },
     {
-      "name": "antigravity-bundle-aas-security-engineer",
-      "version": "12.3.0",
+      "name": "agentic-bundle-aas-security-engineer",
+      "version": "20.6.0",
       "description": "Install the \"AAS Security Engineer\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -507,18 +147,18 @@
         "aas-security-engineer",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-aas-security-engineer"
+      "source": "./plugins/agentic-bundle-aas-security-engineer"
     },
     {
-      "name": "antigravity-bundle-aas-secure-app-builder",
-      "version": "12.3.0",
+      "name": "agentic-bundle-aas-secure-app-builder",
+      "version": "20.6.0",
       "description": "Install the \"AAS Secure App Builder\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -527,18 +167,18 @@
         "aas-secure-app-builder",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-aas-secure-app-builder"
+      "source": "./plugins/agentic-bundle-aas-secure-app-builder"
     },
     {
-      "name": "antigravity-bundle-aas-documents-presentations",
-      "version": "12.3.0",
+      "name": "agentic-bundle-aas-documents-presentations",
+      "version": "20.6.0",
       "description": "Install the \"AAS Documents & Presentations\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -547,18 +187,18 @@
         "aas-documents-presentations",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-aas-documents-presentations"
+      "source": "./plugins/agentic-bundle-aas-documents-presentations"
     },
     {
-      "name": "antigravity-bundle-aas-data-analytics",
-      "version": "12.3.0",
-      "description": "Install the \"AAS Data Analytics\" editorial skill bundle for Claude Code.",
+      "name": "agentic-bundle-aas-data-analytics",
+      "version": "20.6.0",
+      "description": "Install the \"AAS Data Analytics & Business Intelligence\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -567,18 +207,18 @@
         "aas-data-analytics",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-aas-data-analytics"
+      "source": "./plugins/agentic-bundle-aas-data-analytics"
     },
     {
-      "name": "antigravity-bundle-aas-agent-mcp-builder",
-      "version": "12.3.0",
+      "name": "agentic-bundle-aas-agent-mcp-builder",
+      "version": "20.6.0",
       "description": "Install the \"AAS Agent & MCP Builder\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -587,38 +227,18 @@
         "aas-agent-mcp-builder",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-aas-agent-mcp-builder"
+      "source": "./plugins/agentic-bundle-aas-agent-mcp-builder"
     },
     {
-      "name": "antigravity-bundle-aas-oss-maintainer",
-      "version": "12.3.0",
-      "description": "Install the \"AAS OSS Maintainer\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "aas-oss-maintainer",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-aas-oss-maintainer"
-    },
-    {
-      "name": "antigravity-bundle-aas-qa-test-automation",
-      "version": "12.3.0",
+      "name": "agentic-bundle-aas-qa-test-automation",
+      "version": "20.6.0",
       "description": "Install the \"AAS QA & Test Automation\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -627,18 +247,18 @@
         "aas-qa-test-automation",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-aas-qa-test-automation"
+      "source": "./plugins/agentic-bundle-aas-qa-test-automation"
     },
     {
-      "name": "antigravity-bundle-aas-devops-cloud",
-      "version": "12.3.0",
+      "name": "agentic-bundle-aas-devops-cloud",
+      "version": "20.6.0",
       "description": "Install the \"AAS DevOps & Cloud\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -647,18 +267,18 @@
         "aas-devops-cloud",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-aas-devops-cloud"
+      "source": "./plugins/agentic-bundle-aas-devops-cloud"
     },
     {
-      "name": "antigravity-bundle-aas-marketing-seo-growth",
-      "version": "12.3.0",
+      "name": "agentic-bundle-aas-marketing-seo-growth",
+      "version": "20.6.0",
       "description": "Install the \"AAS Marketing, SEO & Growth\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -667,18 +287,18 @@
         "aas-marketing-seo-growth",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-aas-marketing-seo-growth"
+      "source": "./plugins/agentic-bundle-aas-marketing-seo-growth"
     },
     {
-      "name": "antigravity-bundle-aas-automation-builder",
-      "version": "12.3.0",
+      "name": "agentic-bundle-aas-automation-builder",
+      "version": "20.6.0",
       "description": "Install the \"AAS Automation Builder\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -687,18 +307,18 @@
         "aas-automation-builder",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-aas-automation-builder"
+      "source": "./plugins/agentic-bundle-aas-automation-builder"
     },
     {
-      "name": "antigravity-bundle-aas-observability-ir",
-      "version": "12.3.0",
-      "description": "Install the \"AAS Observability IR\" editorial skill bundle for Claude Code.",
+      "name": "agentic-bundle-aas-observability-ir",
+      "version": "20.6.0",
+      "description": "Install the \"AAS Observability & Incident Response\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -707,18 +327,18 @@
         "aas-observability-ir",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-aas-observability-ir"
+      "source": "./plugins/agentic-bundle-aas-observability-ir"
     },
     {
-      "name": "antigravity-bundle-aas-python-api-builder",
-      "version": "12.3.0",
-      "description": "Install the \"AAS Python API Builder\" editorial skill bundle for Claude Code.",
+      "name": "agentic-bundle-aas-python-api-builder",
+      "version": "20.6.0",
+      "description": "Install the \"AAS Python Development\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -727,18 +347,18 @@
         "aas-python-api-builder",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-aas-python-api-builder"
+      "source": "./plugins/agentic-bundle-aas-python-api-builder"
     },
     {
-      "name": "antigravity-bundle-aas-mobile-app-builder",
-      "version": "12.3.0",
+      "name": "agentic-bundle-aas-mobile-app-builder",
+      "version": "20.6.0",
       "description": "Install the \"AAS Mobile App Builder\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -747,58 +367,18 @@
         "aas-mobile-app-builder",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-aas-mobile-app-builder"
+      "source": "./plugins/agentic-bundle-aas-mobile-app-builder"
     },
     {
-      "name": "antigravity-bundle-mobile-developer",
-      "version": "12.3.0",
-      "description": "Install the \"Mobile Developer\" editorial skill bundle for Claude Code.",
+      "name": "agentic-bundle-architecture-design",
+      "version": "20.6.0",
+      "description": "Install the \"Architecture & Domain Modeling\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "mobile-developer",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-mobile-developer"
-    },
-    {
-      "name": "antigravity-bundle-integration-apis",
-      "version": "12.3.0",
-      "description": "Install the \"Integration & APIs\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "integration-apis",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-integration-apis"
-    },
-    {
-      "name": "antigravity-bundle-architecture-design",
-      "version": "12.3.0",
-      "description": "Install the \"Architecture & Design\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -807,78 +387,18 @@
         "architecture-design",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-architecture-design"
+      "source": "./plugins/agentic-bundle-architecture-design"
     },
     {
-      "name": "antigravity-bundle-ddd-evented-architecture",
-      "version": "12.3.0",
-      "description": "Install the \"DDD & Evented Architecture\" editorial skill bundle for Claude Code.",
+      "name": "agentic-bundle-commerce-payments",
+      "version": "20.6.0",
+      "description": "Install the \"Payments & Service Integrations\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "ddd-evented-architecture",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-ddd-evented-architecture"
-    },
-    {
-      "name": "antigravity-bundle-automation-builder",
-      "version": "12.3.0",
-      "description": "Install the \"Automation Builder\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "automation-builder",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-automation-builder"
-    },
-    {
-      "name": "antigravity-bundle-revops-crm-automation",
-      "version": "12.3.0",
-      "description": "Install the \"RevOps & CRM Automation\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "revops-crm-automation",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-revops-crm-automation"
-    },
-    {
-      "name": "antigravity-bundle-commerce-payments",
-      "version": "12.3.0",
-      "description": "Install the \"Commerce & Payments\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -887,18 +407,18 @@
         "commerce-payments",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-commerce-payments"
+      "source": "./plugins/agentic-bundle-commerce-payments"
     },
     {
-      "name": "antigravity-bundle-odoo-erp",
-      "version": "12.3.0",
+      "name": "agentic-bundle-odoo-erp",
+      "version": "20.6.0",
       "description": "Install the \"Odoo ERP\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -907,78 +427,18 @@
         "odoo-erp",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-odoo-erp"
+      "source": "./plugins/agentic-bundle-odoo-erp"
     },
     {
-      "name": "antigravity-bundle-azure-ai-cloud",
-      "version": "12.3.0",
-      "description": "Install the \"Azure AI & Cloud\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "azure-ai-cloud",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-azure-ai-cloud"
-    },
-    {
-      "name": "antigravity-bundle-expo-react-native",
-      "version": "12.3.0",
-      "description": "Install the \"Expo & React Native\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "expo-react-native",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-expo-react-native"
-    },
-    {
-      "name": "antigravity-bundle-apple-platform-design",
-      "version": "12.3.0",
-      "description": "Install the \"Apple Platform Design\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "apple-platform-design",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-apple-platform-design"
-    },
-    {
-      "name": "antigravity-bundle-makepad-builder",
-      "version": "12.3.0",
+      "name": "agentic-bundle-makepad-builder",
+      "version": "20.6.0",
       "description": "Install the \"Makepad Builder\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -987,58 +447,18 @@
         "makepad-builder",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-makepad-builder"
+      "source": "./plugins/agentic-bundle-makepad-builder"
     },
     {
-      "name": "antigravity-bundle-seo-specialist",
-      "version": "12.3.0",
-      "description": "Install the \"SEO Specialist\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "seo-specialist",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-seo-specialist"
-    },
-    {
-      "name": "antigravity-bundle-documents-presentations",
-      "version": "12.3.0",
-      "description": "Install the \"Documents & Presentations\" editorial skill bundle for Claude Code.",
-      "author": {
-        "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
-      },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
-      "license": "MIT",
-      "keywords": [
-        "claude-code",
-        "skills",
-        "bundle",
-        "documents-presentations",
-        "marketplace"
-      ],
-      "source": "./plugins/antigravity-bundle-documents-presentations"
-    },
-    {
-      "name": "antigravity-bundle-oss-maintainer",
-      "version": "12.3.0",
+      "name": "agentic-bundle-oss-maintainer",
+      "version": "20.6.0",
       "description": "Install the \"OSS Maintainer\" editorial skill bundle for Claude Code.",
       "author": {
         "name": "sickn33 and contributors",
-        "url": "https://github.com/sickn33/antigravity-awesome-skills"
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
       },
-      "homepage": "https://github.com/sickn33/antigravity-awesome-skills",
-      "repository": "https://github.com/sickn33/antigravity-awesome-skills",
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
       "license": "MIT",
       "keywords": [
         "claude-code",
@@ -1047,7 +467,167 @@
         "oss-maintainer",
         "marketplace"
       ],
-      "source": "./plugins/antigravity-bundle-oss-maintainer"
+      "source": "./plugins/agentic-bundle-oss-maintainer"
+    },
+    {
+      "name": "agentic-bundle-skill-author",
+      "version": "20.6.0",
+      "description": "Install the \"Skill Author\" editorial skill bundle for Claude Code.",
+      "author": {
+        "name": "sickn33 and contributors",
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
+      },
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
+      "license": "MIT",
+      "keywords": [
+        "claude-code",
+        "skills",
+        "bundle",
+        "skill-author",
+        "marketplace"
+      ],
+      "source": "./plugins/agentic-bundle-skill-author"
+    },
+    {
+      "name": "agentic-bundle-aas-accessibility-inclusive-ux",
+      "version": "20.6.0",
+      "description": "Install the \"AAS Accessibility & Inclusive UX\" editorial skill bundle for Claude Code.",
+      "author": {
+        "name": "sickn33 and contributors",
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
+      },
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
+      "license": "MIT",
+      "keywords": [
+        "claude-code",
+        "skills",
+        "bundle",
+        "aas-accessibility-inclusive-ux",
+        "marketplace"
+      ],
+      "source": "./plugins/agentic-bundle-aas-accessibility-inclusive-ux"
+    },
+    {
+      "name": "agentic-bundle-aas-api-platform-builder",
+      "version": "20.6.0",
+      "description": "Install the \"AAS Backend & API Platform\" editorial skill bundle for Claude Code.",
+      "author": {
+        "name": "sickn33 and contributors",
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
+      },
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
+      "license": "MIT",
+      "keywords": [
+        "claude-code",
+        "skills",
+        "bundle",
+        "aas-api-platform-builder",
+        "marketplace"
+      ],
+      "source": "./plugins/agentic-bundle-aas-api-platform-builder"
+    },
+    {
+      "name": "agentic-bundle-aas-saas-launch-revenue",
+      "version": "20.6.0",
+      "description": "Install the \"AAS SaaS Launch & Revenue\" editorial skill bundle for Claude Code.",
+      "author": {
+        "name": "sickn33 and contributors",
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
+      },
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
+      "license": "MIT",
+      "keywords": [
+        "claude-code",
+        "skills",
+        "bundle",
+        "aas-saas-launch-revenue",
+        "marketplace"
+      ],
+      "source": "./plugins/agentic-bundle-aas-saas-launch-revenue"
+    },
+    {
+      "name": "agentic-bundle-aas-ai-product-evaluation-ops",
+      "version": "20.6.0",
+      "description": "Install the \"AAS AI Product & Evaluation Ops\" editorial skill bundle for Claude Code.",
+      "author": {
+        "name": "sickn33 and contributors",
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
+      },
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
+      "license": "MIT",
+      "keywords": [
+        "claude-code",
+        "skills",
+        "bundle",
+        "aas-ai-product-evaluation-ops",
+        "marketplace"
+      ],
+      "source": "./plugins/agentic-bundle-aas-ai-product-evaluation-ops"
+    },
+    {
+      "name": "agentic-bundle-aas-data-engineering-platform",
+      "version": "20.6.0",
+      "description": "Install the \"AAS Data Engineering Platform\" editorial skill bundle for Claude Code.",
+      "author": {
+        "name": "sickn33 and contributors",
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
+      },
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
+      "license": "MIT",
+      "keywords": [
+        "claude-code",
+        "skills",
+        "bundle",
+        "aas-data-engineering-platform",
+        "marketplace"
+      ],
+      "source": "./plugins/agentic-bundle-aas-data-engineering-platform"
+    },
+    {
+      "name": "agentic-bundle-aas-privacy-compliance-engineering",
+      "version": "20.6.0",
+      "description": "Install the \"AAS Privacy & Compliance Engineering\" editorial skill bundle for Claude Code.",
+      "author": {
+        "name": "sickn33 and contributors",
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
+      },
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
+      "license": "MIT",
+      "keywords": [
+        "claude-code",
+        "skills",
+        "bundle",
+        "aas-privacy-compliance-engineering",
+        "marketplace"
+      ],
+      "source": "./plugins/agentic-bundle-aas-privacy-compliance-engineering"
+    },
+    {
+      "name": "agentic-bundle-aas-localization-international-growth",
+      "version": "20.6.0",
+      "description": "Install the \"AAS Localization & International Growth\" editorial skill bundle for Claude Code.",
+      "author": {
+        "name": "sickn33 and contributors",
+        "url": "https://github.com/sickn33/agentic-awesome-skills"
+      },
+      "homepage": "https://github.com/sickn33/agentic-awesome-skills",
+      "repository": "https://github.com/sickn33/agentic-awesome-skills",
+      "license": "MIT",
+      "keywords": [
+        "claude-code",
+        "skills",
+        "bundle",
+        "aas-localization-international-growth",
+        "marketplace"
+      ],
+      "source": "./plugins/agentic-bundle-aas-localization-international-growth"
     }
   ]
 }

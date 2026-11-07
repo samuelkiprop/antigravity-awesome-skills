@@ -9,8 +9,9 @@ Complete guide to configuring Transformers.js behavior using the `env` object.
 3. [Local Model Configuration](#local-model-configuration)
 4. [Cache Configuration](#cache-configuration)
 5. [WASM Configuration](#wasm-configuration)
-6. [Common Configuration Patterns](#common-configuration-patterns)
-7. [Environment Best Practices](#environment-best-practices)
+6. [Network and Logging Controls](#network-and-logging-controls)
+7. [Common Configuration Patterns](#common-configuration-patterns)
+8. [Environment Best Practices](#environment-best-practices)
 
 ## Overview
 
@@ -20,7 +21,7 @@ The `env` object provides comprehensive control over Transformers.js execution, 
 import { env } from '@huggingface/transformers';
 
 // View current version
-console.log(env.version); // e.g., '3.8.1'
+console.log(env.version); // e.g., '4.x'
 ```
 
 ### Available Properties
@@ -29,22 +30,22 @@ console.log(env.version); // e.g., '3.8.1'
 interface TransformersEnvironment {
   // Version info
   version: string;
-  
+
   // Backend configuration
   backends: {
     onnx: Partial<ONNXEnv>;
   };
-  
+
   // Remote model settings
   allowRemoteModels: boolean;
   remoteHost: string;
   remotePathTemplate: string;
-  
+
   // Local model settings
   allowLocalModels: boolean;
   localModelPath: string;
   useFS: boolean;
-  
+
   // Cache settings
   useBrowserCache: boolean;
   useFSCache: boolean;
@@ -53,6 +54,10 @@ interface TransformersEnvironment {
   customCache: CacheInterface | null;
   useWasmCache: boolean;
   cacheKey: string;
+
+  // Networking and logging (v4)
+  fetch: typeof globalThis.fetch;
+  logLevel: LogLevel;
 }
 ```
 
@@ -65,7 +70,7 @@ Control how models are loaded from remote sources (default: Hugging Face Hub).
 ```javascript
 import { env } from '@huggingface/transformers';
 
-// Force local-only mode (no network requests)
+// Disable remote model loading; runtime/WASM assets must also be local for offline use
 env.allowRemoteModels = false;
 ```
 
@@ -210,9 +215,9 @@ Configure ONNX Runtime Web Assembly backend settings.
 import { env } from '@huggingface/transformers';
 
 // Set custom WASM paths
-env.backends.onnx.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
+env.backends.onnx.wasm.wasmPaths = '/static/wasm/' // Copy assets matching the installed ONNX Runtime version;
 
-// Configure number of threads (Node.js only)
+// Configure threads; browsers require SharedArrayBuffer and cross-origin isolation
 env.backends.onnx.wasm.numThreads = 4;
 
 // Enable/disable SIMD (single instruction, multiple data)
@@ -224,7 +229,7 @@ env.backends.onnx.wasm.simd = true;
 ```javascript
 import { env } from '@huggingface/transformers';
 
-// Configure proxy for WASM downloads
+// Run WASM through a Web Worker proxy; this is not an HTTP proxy
 env.backends.onnx.wasm.proxy = true;
 ```
 
@@ -237,11 +242,45 @@ import { env } from '@huggingface/transformers';
 env.backends.onnx.wasm.wasmPaths = '/static/wasm/';
 ```
 
-**Required files:**
-- `ort-wasm.wasm` - Main WASM binary
-- `ort-wasm-simd.wasm` - SIMD-enabled WASM binary
-- `ort-wasm-threaded.wasm` - Multi-threaded WASM binary
-- `ort-wasm-simd-threaded.wasm` - SIMD + multi-threaded WASM binary
+**Required files:** copy the WASM and JavaScript module assets referenced by the exact installed ONNX Runtime build. Filenames vary by release and execution provider; do not mix a floating CDN build with installed JavaScript. Test offline with network disabled after supplying models, tokenizers, runtime assets and application code locally.
+
+## Network and Logging Controls
+
+Transformers.js v4 adds environment controls for authenticated fetching and cleaner runtime logs.
+
+### Custom Fetch (`env.fetch`)
+
+Main/v4 builds support `env.fetch` overrides for retries, routing or abort handling. For Hub authentication, prefer the built-in server-side `HF_TOKEN` handling:
+
+```javascript
+import { env } from '@huggingface/transformers';
+
+const HF_TOKEN = process.env.HF_TOKEN;
+
+// Server-side only: let the library scope HF_TOKEN to the Hugging Face Hub.
+// Set process.env.HF_TOKEN through your secret manager; never embed it in browser code.
+// Do not attach bearer tokens to arbitrary model/CDN/WASM URLs.
+```
+
+### Logging Level (`env.logLevel`)
+
+Use `env.logLevel` to override runtime verbosity. The default is `LogLevel.WARNING`.
+
+```javascript
+import { env, LogLevel } from '@huggingface/transformers';
+
+// Enable more detailed logs during development
+env.logLevel = LogLevel.INFO;
+```
+
+Common values:
+- `LogLevel.DEBUG`
+- `LogLevel.INFO`
+- `LogLevel.WARNING`
+- `LogLevel.ERROR`
+- `LogLevel.NONE`
+
+For ONNX Runtime session-level logging controls, see `session_options` in **[Pipeline Options](./PIPELINE_OPTIONS.md)**.
 
 ## Common Configuration Patterns
 

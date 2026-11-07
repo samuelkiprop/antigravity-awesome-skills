@@ -1,7 +1,7 @@
 ---
 name: azure-storage-queue-py
 description: Azure Queue Storage SDK for Python. Use for reliable message queuing, task distribution, and asynchronous processing.
-risk: unknown
+risk: critical
 source: community
 date_added: '2026-02-27'
 ---
@@ -37,6 +37,8 @@ service_client = QueueServiceClient(account_url=account_url, credential=credenti
 # Queue client
 queue_client = QueueClient(account_url=account_url, queue_name="myqueue", credential=credential)
 ```
+
+Examples are independent fragments, not a run-all script. Confirm account/queue and whether reads may change visibility; use peek for observational checks. Receiving/deleting/clearing impacts other consumers and needs explicit scope. Bound message count/time/bytes, handle poison messages, and make processing idempotent because delivery can repeat. Do not delete a message until durable processing succeeds; replace placeholder processing before execution. Preserve the latest pop receipt after updates and reconcile ambiguous outcomes before retrying. Close both async clients and credentials in failure paths.
 
 ## Queue Operations
 
@@ -85,7 +87,7 @@ messages = queue_client.receive_messages(
 
 for message in messages:
     print(f"ID: {message.id}")
-    print(f"Content: {message.content}")
+    # Do not log message payloads.
     print(f"Dequeue count: {message.dequeue_count}")
     
     # Process message...
@@ -101,7 +103,7 @@ for message in messages:
 messages = queue_client.peek_messages(max_messages=5)
 
 for message in messages:
-    print(message.content)
+    # Inspect only authorized synthetic content; do not log payloads.
 ```
 
 ## Update Message
@@ -177,7 +179,7 @@ async def queue_operations():
         
         # Receive
         async for message in client.receive_messages():
-            print(message.content)
+            # Inspect only authorized synthetic content; do not log payloads.
             await client.delete_message(message)
 
 import asyncio

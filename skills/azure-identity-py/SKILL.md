@@ -1,7 +1,7 @@
 ---
 name: azure-identity-py
 description: Azure Identity SDK for Python authentication. Use for DefaultAzureCredential, managed identity, service principals, and token caching.
-risk: unknown
+risk: critical
 source: community
 date_added: '2026-02-27'
 ---
@@ -30,7 +30,7 @@ AZURE_CLIENT_ID=<managed-identity-client-id>
 
 ## DefaultAzureCredential
 
-The recommended credential for most scenarios. Tries multiple authentication methods in order:
+Useful for development and flexible environments. Production should select an explicit intended credential (such as workload/managed identity) rather than unexpectedly falling back to another account. The chain below is illustrative and version/configuration-dependent:
 
 ```python
 from azure.identity import DefaultAzureCredential
@@ -74,6 +74,8 @@ credential = DefaultAzureCredential(
 )
 ```
 
+Before token acquisition, verify tenant, client/principal, cloud and required audience/scope without printing tokens. Avoid secrets in dotenv examples committed to a repo or pasted into shell history; prefer managed/workload identity where supported. Close credentials/clients in failure paths. Review the [current credential-chain guidance](https://learn.microsoft.com/en-us/azure/developer/python/sdk/authentication/credential-chains) for the selected package, including optional broker/developer credentials.
+
 ## Specific Credential Types
 
 ### ManagedIdentityCredential
@@ -97,6 +99,7 @@ credential = ManagedIdentityCredential(
 For service principal with secret:
 
 ```python
+import os
 from azure.identity import ClientSecretCredential
 
 credential = ClientSecretCredential(

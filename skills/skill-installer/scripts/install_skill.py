@@ -33,6 +33,55 @@ import re
 from pathlib import Path
 from datetime import datetime
 
+
+def safe_user_path(path_value, base_dir="."):
+    """Resolve a CLI path under the current workspace."""
+    if base_dir != ".":
+        raise ValueError("Custom base directories are not supported for CLI paths")
+    base_path = Path.cwd().resolve()
+    lexical = Path(path_value).expanduser().absolute()
+    if any(part.is_symlink() for part in (lexical, *lexical.parents)):
+        raise ValueError("Symlink paths are not supported")
+    resolved_path = lexical.resolve()
+    try:
+        resolved_path.relative_to(base_path)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes allowed directory: {path_value}") from exc
+    return resolved_path
+
+
+def assert_regular_tree(root: Path) -> None:
+    root = Path(root)
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError("Expected a regular directory, not a symlink")
+    for path in root.rglob("*"):
+        if path.is_symlink() or (not path.is_file() and not path.is_dir()):
+            raise ValueError(f"Links and special files are not supported: {path}")
+
+
+def copy_tree_contents(source_dir: Path, target_dir: Path, *, ignore=None) -> None:
+    assert_regular_tree(source_dir)
+    if target_dir.is_symlink():
+        raise ValueError("Symlink destination is not supported")
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    for current_dir, dirs, files in os.walk(source_dir, followlinks=False):
+        current_path = Path(current_dir)
+        ignored_names = set(ignore(str(current_path), dirs + files)) if ignore is not None else set()
+        dirs[:] = [directory for directory in dirs if directory not in ignored_names]
+
+        relative_dir = current_path.relative_to(source_dir)
+        target_current_dir = target_dir / relative_dir
+        target_current_dir.mkdir(parents=True, exist_ok=True)
+
+        for file_name in files:
+            if file_name in ignored_names:
+                continue
+            source_path = current_path / file_name
+            if not source_path.is_file():
+                continue
+            shutil.copy2(source_path, target_current_dir / file_name)
+
 # Add scripts directory to path for imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -42,9 +91,9 @@ from detect_skills import detect
 
 # ── Configuration ──────────────────────────────────────────────────────────
 
-SKILLS_ROOT = Path(r"C:\Users\renat\skills")
-CLAUDE_SKILLS = SKILLS_ROOT / ".claude" / "skills"
-INSTALLER_DIR = SKILLS_ROOT / "skill-installer"
+SKILLS_ROOT = (Path.cwd() / "skills").resolve()
+CLAUDE_SKILLS = Path.cwd() / ".claude" / "skills"
+INSTALLER_DIR = Path.cwd() / ".skill-installer"
 DATA_DIR = INSTALLER_DIR / "data"
 BACKUPS_DIR = DATA_DIR / "backups"
 STAGING_DIR = DATA_DIR / "staging"
@@ -115,19 +164,46 @@ def _fail(msg: str):
 
 def sanitize_name(name: str) -> str:
     """Sanitize skill name: lowercase, hyphens, no spaces."""
-    name = name.strip().lower()
-    name = name.replace(" ", "-")
-    name = name.replace("_", "-")
-    # Remove any chars that aren't alphanumeric or hyphens
-    name = "".join(c for c in name if c.isalnum() or c == "-")
-    # Remove leading/trailing hyphens and collapse multiples
-    while "--" in name:
-        name = name.replace("--", "-")
-    return name.strip("-")
+    if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name) or len(name) > 64:
+        raise ValueError("Skill name must be 1-64 lowercase ASCII letters/digits separated by hyphens")
+    return name
+
+
+def safe_child_path(root: Path, *parts: str) -> Path:
+    """Resolve a child path and ensure it remains under root."""
+    root = safe_user_path(root)
+    lexical = root.joinpath(*parts)
+    if any(part.is_symlink() for part in (lexical, *lexical.parents)):
+        raise ValueError("Symlink destination is not supported")
+    child = lexical.resolve()
+    try:
+        child.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes {root}: {child}") from exc
+    return child
+
+
+def safe_skill_path(root: Path, skill_name: str) -> Path:
+    """Build a path from a sanitized skill name under a trusted root."""
+    clean_name = sanitize_name(skill_name)
+    if not clean_name:
+        raise ValueError("Invalid empty skill name")
+    return safe_child_path(root, clean_name)
+
+
+def resolve_skill_source(source: str) -> Path:
+    """Resolve and validate a local skill source directory."""
+    source_path = safe_user_path(source).expanduser().resolve()
+    assert_regular_tree(source_path)
+    if not source_path.is_dir():
+        raise ValueError(f"Source does not exist or is not a directory: {source_path}")
+    if not (source_path / "SKILL.md").is_file():
+        raise ValueError(f"No SKILL.md found in {source_path}")
+    return source_path
 
 
 def md5_dir(path: Path, exclude_dirs: set = None) -> str:
-    """Compute combined MD5 hash of all files in a directory.
+    """Compute combined SHA-256 hash of all files in a directory.
 
     Excludes backup/staging dirs and normalizes paths to forward slashes
     for cross-platform consistency.
@@ -135,26 +211,26 @@ def md5_dir(path: Path, exclude_dirs: set = None) -> str:
     if exclude_dirs is None:
         exclude_dirs = {"backups", "staging", ".git", "__pycache__", "node_modules", ".venv"}
 
-    h = hashlib.md5()
-    for root, dirs, files in os.walk(path):
-        # Filter out excluded directories
-        dirs[:] = [d for d in dirs if d not in exclude_dirs]
-        for f in sorted(files):
-            fp = Path(root) / f
-            try:
-                # Normalize to forward slashes for consistent hashing
-                rel = fp.relative_to(path).as_posix()
-                h.update(rel.encode("utf-8"))
-                with open(fp, "rb") as fh:
-                    for chunk in iter(lambda: fh.read(8192), b""):
-                        h.update(chunk)
-            except Exception:
-                pass
+    root_path = safe_user_path(path).resolve(strict=True)
+    if not root_path.is_dir():
+        raise ValueError(f"Hash target must be a directory: {root_path}")
+
+    assert_regular_tree(root_path)
+    h = hashlib.sha256()
+    for fp in sorted(root_path.rglob("*")):
+        if not fp.is_file() or any(part in exclude_dirs for part in fp.relative_to(root_path).parts[:-1]):
+            continue
+        rel = fp.relative_to(root_path).as_posix().encode("utf-8")
+        content = fp.read_bytes()
+        executable = bool(fp.stat().st_mode & 0o111)
+        for value in (rel, b"x" if executable else b"-", content):
+            h.update(len(value).to_bytes(8, "big"))
+            h.update(value)
     return h.hexdigest()
 
 
 def parse_version(ver: str) -> tuple:
-    """Parse a semver string into a comparable tuple.
+    """Approximate numeric version comparison; not full SemVer ordering.
 
     Examples: '1.0.0' -> (1,0,0), '2.1' -> (2,1,0), '' -> (0,0,0)
     """
@@ -241,7 +317,7 @@ def cleanup_old_backups(skill_name: str):
 def get_all_skill_dirs() -> list:
     """Get all skill directories in the ecosystem (top-level + nested)."""
     dirs = []
-    for item in sorted(SKILLS_ROOT.iterdir()):
+    for item in sorted(SKILLS_ROOT.iterdir()) if SKILLS_ROOT.exists() else []:
         if not item.is_dir() or item.name.startswith("."):
             continue
         if item.name == "agent-orchestrator":
@@ -262,11 +338,10 @@ def get_all_skill_dirs() -> list:
 def step1_resolve_source(source: str = None, do_detect: bool = False, auto: bool = False) -> dict:
     """STEP 1: Resolve source directory."""
     if source:
-        source_path = Path(source).resolve()
-        if not source_path.exists():
-            return {"success": False, "error": f"Source does not exist: {source_path}"}
-        if not (source_path / "SKILL.md").exists():
-            return {"success": False, "error": f"No SKILL.md found in {source_path}"}
+        try:
+            source_path = resolve_skill_source(source)
+        except ValueError as e:
+            return {"success": False, "error": str(e)}
         return {"success": True, "sources": [str(source_path)]}
 
     if do_detect:
@@ -316,8 +391,8 @@ def step3_determine_name(source_path: Path, name_override: str = None) -> str:
 
 def step4_check_conflicts(skill_name: str) -> dict:
     """STEP 4: Check for existing skill with same name."""
-    dest = SKILLS_ROOT / skill_name
-    claude_dest = CLAUDE_SKILLS / skill_name
+    dest = safe_skill_path(SKILLS_ROOT, skill_name)
+    claude_dest = safe_skill_path(CLAUDE_SKILLS, skill_name)
 
     conflicts = []
     if dest.exists():
@@ -336,24 +411,26 @@ def step4_check_conflicts(skill_name: str) -> dict:
 def _backup_ignore(directory, contents):
     """Ignore function for shutil.copytree to skip backup/staging dirs."""
     ignored = set()
-    dir_path = Path(directory)
+    dir_path = safe_user_path(directory)
     for item in contents:
         item_path = dir_path / item
+        if item_path.is_symlink():
+            ignored.add(item)
         # Skip backup and staging directories to prevent recursion
         if item in ("backups", "staging") and dir_path.name == "data":
             ignored.add(item)
         # Skip .git and __pycache__
-        if item in (".git", "__pycache__", "node_modules", ".venv"):
+        if item in (".git", "__pycache__", "node_modules", ".venv", ".claude-registration"):
             ignored.add(item)
     return ignored
 
 
 def step5_backup(skill_name: str) -> dict:
     """STEP 5: Backup existing skill before overwrite."""
-    dest = SKILLS_ROOT / skill_name
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    dest = safe_skill_path(SKILLS_ROOT, skill_name)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     backup_name = f"{skill_name}_{timestamp}"
-    backup_path = BACKUPS_DIR / backup_name
+    backup_path = safe_child_path(BACKUPS_DIR, backup_name)
 
     BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -366,7 +443,7 @@ def step5_backup(skill_name: str) -> dict:
         except Exception as e:
             return {"success": False, "error": f"Backup failed for {dest}: {e}"}
 
-    claude_dest = CLAUDE_SKILLS / skill_name
+    claude_dest = safe_skill_path(CLAUDE_SKILLS, skill_name)
     if claude_dest.exists():
         claude_backup = backup_path / ".claude-registration"
         claude_backup.mkdir(parents=True, exist_ok=True)
@@ -388,8 +465,11 @@ def step5_backup(skill_name: str) -> dict:
 
 def step6_copy_to_skills_root(source_path: Path, skill_name: str) -> dict:
     """STEP 6: Copy to skills root via staging area."""
-    dest = SKILLS_ROOT / skill_name
-    staging = STAGING_DIR / skill_name
+    source_path = resolve_skill_source(str(source_path))
+    dest = safe_skill_path(SKILLS_ROOT, skill_name)
+    if source_path == dest or source_path in dest.parents or dest in source_path.parents:
+        return {"success": False, "error": "Source and destination must not overlap"}
+    staging = safe_skill_path(STAGING_DIR, skill_name)
 
     STAGING_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -399,7 +479,7 @@ def step6_copy_to_skills_root(source_path: Path, skill_name: str) -> dict:
 
     # Copy to staging first (skip backups/staging to prevent recursion)
     try:
-        shutil.copytree(source_path, staging, ignore=_backup_ignore, dirs_exist_ok=True)
+        copy_tree_contents(source_path, staging, ignore=_backup_ignore)
     except Exception as e:
         return {"success": False, "error": f"Copy to staging failed: {e}"}
 
@@ -433,7 +513,7 @@ def step6_copy_to_skills_root(source_path: Path, skill_name: str) -> dict:
     except Exception as e:
         # Try copy + delete as fallback (cross-device moves)
         try:
-            shutil.copytree(staging, dest, dirs_exist_ok=True)
+            copy_tree_contents(staging, dest)
             shutil.rmtree(staging, ignore_errors=True)
         except Exception as e2:
             shutil.rmtree(staging, ignore_errors=True)
@@ -448,71 +528,33 @@ def step6_copy_to_skills_root(source_path: Path, skill_name: str) -> dict:
 
 def step7_register_claude(skill_name: str) -> dict:
     """STEP 7: Register in .claude/skills/ for native Claude Code discovery."""
-    source_skill_md = SKILLS_ROOT / skill_name / "SKILL.md"
-    claude_dest_dir = CLAUDE_SKILLS / skill_name
+    source_dir = safe_skill_path(SKILLS_ROOT, skill_name)
+    source_skill_md = source_dir / "SKILL.md"
+    claude_dest_dir = safe_skill_path(CLAUDE_SKILLS, skill_name)
 
     if not source_skill_md.exists():
         return {"success": False, "error": f"SKILL.md not found at {source_skill_md}"}
 
     claude_dest_dir.mkdir(parents=True, exist_ok=True)
 
-    # Copy SKILL.md
     try:
-        shutil.copy2(source_skill_md, claude_dest_dir / "SKILL.md")
-    except Exception as e:
-        return {"success": False, "error": f"Failed to copy SKILL.md to Claude skills: {e}"}
-
-    # Also copy references/ if it exists (useful for Claude to read)
-    refs_dir = SKILLS_ROOT / skill_name / "references"
-    if refs_dir.exists():
-        claude_refs = claude_dest_dir / "references"
-        try:
-            if claude_refs.exists():
-                shutil.rmtree(claude_refs)
-            shutil.copytree(refs_dir, claude_refs)
-        except Exception:
-            pass  # Non-critical
-
-    return {
-        "success": True,
-        "registered_at": str(claude_dest_dir),
-        "files_registered": ["SKILL.md"] + (
-            ["references/"] if refs_dir.exists() else []
-        ),
-    }
+        assert_regular_tree(source_dir)
+        if claude_dest_dir.exists():
+            assert_regular_tree(claude_dest_dir)
+            shutil.rmtree(claude_dest_dir)
+        copy_tree_contents(source_dir, claude_dest_dir, ignore=_backup_ignore)
+        if md5_dir(source_dir) != md5_dir(claude_dest_dir):
+            raise ValueError("Full registration hash mismatch")
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
+    return {"success": True, "registered_at": str(claude_dest_dir), "files_registered": "complete reviewed tree"}
 
 
 def step8_update_registry() -> dict:
     """STEP 8: Run scan_registry.py to update orchestrator registry."""
-    if not SCAN_SCRIPT.exists():
-        return {
-            "success": False,
-            "error": f"scan_registry.py not found at {SCAN_SCRIPT}",
-        }
-
-    try:
-        result = subprocess.run(
-            ["python", str(SCAN_SCRIPT), "--force"],
-            capture_output=True,
-            text=True,
-            timeout=30,
-            cwd=str(SKILLS_ROOT),
-        )
-        if result.returncode == 0:
-            try:
-                scan_output = json.loads(result.stdout)
-            except json.JSONDecodeError:
-                scan_output = {"raw": result.stdout[:500]}
-            return {"success": True, "scan_output": scan_output}
-        else:
-            return {
-                "success": False,
-                "error": f"scan_registry.py failed: {result.stderr[:500]}",
-            }
-    except subprocess.TimeoutExpired:
-        return {"success": False, "error": "scan_registry.py timed out (30s)"}
-    except Exception as e:
-        return {"success": False, "error": f"Failed to run scan_registry.py: {e}"}
+    # External orchestrator code is not bundled or reviewed here. Never execute it implicitly.
+    return {"success": True, "skipped": True,
+            "message": "External orchestrator integration not performed; configure and review separately"}
 
 
 def step9_verify(skill_name: str) -> dict:
@@ -520,7 +562,7 @@ def step9_verify(skill_name: str) -> dict:
     checks = []
 
     # Check 1: Skill directory exists
-    dest = SKILLS_ROOT / skill_name
+    dest = safe_skill_path(SKILLS_ROOT, skill_name)
     checks.append({
         "check": "skill_dir_exists",
         "pass": dest.exists(),
@@ -551,26 +593,15 @@ def step9_verify(skill_name: str) -> dict:
     })
 
     # Check 4: Claude Code registration
-    claude_skill_md = CLAUDE_SKILLS / skill_name / "SKILL.md"
+    claude_skill_md = safe_skill_path(CLAUDE_SKILLS, skill_name) / "SKILL.md"
     checks.append({
         "check": "claude_registered",
         "pass": claude_skill_md.exists(),
         "path": str(claude_skill_md),
     })
 
-    # Check 5: Appears in registry
-    in_registry = False
-    if REGISTRY_PATH.exists():
-        try:
-            registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
-            skill_names = [s.get("name", "").lower() for s in registry.get("skills", [])]
-            in_registry = skill_name.lower() in skill_names
-        except Exception:
-            pass
-    checks.append({
-        "check": "in_registry",
-        "pass": in_registry,
-    })
+    # The bundled installer does not claim external orchestrator registration.
+    checks.append({"check": "complete_claude_tree", "pass": md5_dir(dest) == md5_dir(safe_skill_path(CLAUDE_SKILLS, skill_name))})
 
     all_passed = all(c["pass"] for c in checks)
 
@@ -590,7 +621,7 @@ def step10_log(skill_name: str, source: str, result: dict):
         "action": "install",
         "skill_name": skill_name,
         "source": source,
-        "destination": str(SKILLS_ROOT / skill_name),
+        "destination": str(safe_skill_path(SKILLS_ROOT, skill_name)),
         "registered": result.get("registered", False),
         "registry_updated": result.get("registry_updated", False),
         "backup_path": result.get("backup_path"),
@@ -625,7 +656,6 @@ def install_single(
         dry_run: If True, simulate all steps without writing anything.
         verbose: If True, print step-by-step progress to stdout.
     """
-    source = Path(source_path).resolve()
     total_steps = 11
     result = {
         "success": False,
@@ -646,10 +676,12 @@ def install_single(
     # STEP 1: Already resolved (source is provided)
     if verbose:
         _step(1, total_steps, "Resolving source...")
-    if not source.exists() or not (source / "SKILL.md").exists():
-        result["error"] = f"Invalid source: {source}"
+    try:
+        source = resolve_skill_source(source_path)
+    except ValueError as e:
+        result["error"] = str(e)
         if verbose:
-            _fail(f"Source invalid: {source}")
+            _fail(str(e))
         return result
 
     result["steps"]["1_resolve"] = {"success": True, "source": str(source)}
@@ -696,7 +728,7 @@ def install_single(
     # Version comparison with installed
     source_meta = parse_yaml_frontmatter(source / "SKILL.md")
     source_version = source_meta.get("version", "")
-    dest = SKILLS_ROOT / skill_name
+    dest = safe_skill_path(SKILLS_ROOT, skill_name)
     if dest.exists() and (dest / "SKILL.md").exists():
         installed_meta = parse_yaml_frontmatter(dest / "SKILL.md")
         installed_version = installed_meta.get("version", "")
@@ -812,7 +844,7 @@ def install_single(
         _step(7, total_steps, "Registering in Claude Code CLI...")
     if dry_run:
         result["steps"]["7_register"] = {"success": True, "dry_run": True}
-        result["registered"] = True
+        result["registered"] = False
         if verbose:
             _ok("Would register in .claude/skills/ (dry-run)")
     else:
@@ -832,13 +864,13 @@ def install_single(
         _step(8, total_steps, "Updating orchestrator registry...")
     if dry_run:
         result["steps"]["8_registry"] = {"success": True, "dry_run": True}
-        result["registry_updated"] = True
+        result["registry_updated"] = False
         if verbose:
             _ok("Would update registry (dry-run)")
     else:
         registry_result = step8_update_registry()
         result["steps"]["8_registry"] = registry_result
-        result["registry_updated"] = registry_result["success"]
+        result["registry_updated"] = registry_result["success"] and not registry_result.get("skipped")
 
         if not registry_result["success"]:
             result["warnings"].append(f"Registry update warning: {registry_result.get('error')}")
@@ -879,7 +911,7 @@ def install_single(
         zip_result = {"success": False, "skipped": True}
         try:
             from package_skill import package_skill as pkg_skill
-            zip_result = pkg_skill(SKILLS_ROOT / skill_name)
+            zip_result = pkg_skill(safe_skill_path(SKILLS_ROOT, skill_name))
             result["steps"]["10_package"] = zip_result
             result["zip_path"] = zip_result.get("zip_path") if zip_result["success"] else None
             if verbose:
@@ -904,7 +936,7 @@ def install_single(
             _ok("Would log operation (dry-run)")
             print(f"\n{_C.bold(_C.green('DRY RUN COMPLETE'))} -- no changes were made.\n")
     else:
-        result["success"] = result.get("verification", {}).get("success", False)
+        result["success"] = result.get("verification", {}).get("success", False) and result.get("steps", {}).get("10_package", {}).get("success", False)
         if not result.get("verification", {}).get("success", True):
             failed_checks = [c for c in result.get("verification", {}).get("checks", []) if not c.get("pass")]
             result["warnings"].append(
@@ -936,8 +968,8 @@ def uninstall_skill(skill_name: str, keep_backup: bool = True) -> dict:
         "backup_path": None,
     }
 
-    dest = SKILLS_ROOT / skill_name
-    claude_dest = CLAUDE_SKILLS / skill_name
+    dest = safe_skill_path(SKILLS_ROOT, skill_name)
+    claude_dest = safe_skill_path(CLAUDE_SKILLS, skill_name)
 
     if not dest.exists() and not claude_dest.exists():
         result["error"] = f"Skill '{skill_name}' not found in any location"
@@ -945,8 +977,9 @@ def uninstall_skill(skill_name: str, keep_backup: bool = True) -> dict:
 
     # Backup before removing
     if keep_backup and dest.exists():
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_path = BACKUPS_DIR / f"{skill_name}_{timestamp}"
+        assert_regular_tree(dest)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        backup_path = safe_child_path(BACKUPS_DIR, f"{skill_name}_{timestamp}")
         BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
         try:
             shutil.copytree(dest, backup_path, dirs_exist_ok=True)
@@ -970,19 +1003,13 @@ def uninstall_skill(skill_name: str, keep_backup: bool = True) -> dict:
             shutil.rmtree(claude_dest)
             result["removed"].append(str(claude_dest))
         except Exception as e:
-            result["warnings"] = [f"Failed to remove Claude registration: {e}"]
+            result["error"] = f"Canonical copy removed but Claude registration remains: {e}"
+            return result
 
     # Update registry
     registry_result = step8_update_registry()
 
-    # Remove ZIP from Desktop if exists
-    zip_path = Path(os.path.expanduser("~")) / "Desktop" / f"{skill_name}.zip"
-    if zip_path.exists():
-        try:
-            zip_path.unlink()
-            result["removed"].append(str(zip_path))
-        except Exception:
-            pass
+    # Packaged archives are independent user artifacts; do not delete them on uninstall.
 
     # Log operation
     entry = {
@@ -999,7 +1026,7 @@ def uninstall_skill(skill_name: str, keep_backup: bool = True) -> dict:
         pass
 
     result["success"] = True
-    result["registry_updated"] = registry_result.get("success", False)
+    result["registry_updated"] = registry_result.get("success", False) and not registry_result.get("skipped")
     return result
 
 
@@ -1018,10 +1045,10 @@ def health_check() -> dict:
         except Exception:
             pass
 
-    registry_names = {s.get("name", "").lower() for s in registry_skills}
+    registry_names = {str(s.get("name", "")).lower() for s in registry_skills if isinstance(s, dict)}
 
     # Check all skill directories in skills root
-    for item in sorted(SKILLS_ROOT.iterdir()):
+    for item in sorted(SKILLS_ROOT.iterdir()) if SKILLS_ROOT.exists() else []:
         if not item.is_dir():
             continue
         if item.name.startswith("."):
@@ -1041,8 +1068,9 @@ def health_check() -> dict:
             "dir": str(item),
             "skill_md_exists": skill_md.exists(),
             "frontmatter_ok": bool(meta.get("name") and meta.get("description")),
-            "claude_registered": (CLAUDE_SKILLS / name / "SKILL.md").exists(),
-            "in_registry": name in registry_names,
+            "claude_registered": (safe_skill_path(CLAUDE_SKILLS, name) / "SKILL.md").exists(),
+            "in_registry": True,  # External integration not performed by bundled installer
+            "registry_check": "not-performed",
             "has_scripts": (item / "scripts").exists(),
             "has_references": (item / "references").exists(),
         }
@@ -1061,7 +1089,7 @@ def health_check() -> dict:
         results.append(checks)
 
     # Also check nested skills (e.g., juntas-comerciais/junta-leiloeiros)
-    for parent in SKILLS_ROOT.iterdir():
+    for parent in SKILLS_ROOT.iterdir() if SKILLS_ROOT.exists() else []:
         if not parent.is_dir() or parent.name.startswith("."):
             continue
         if parent.name in ("agent-orchestrator", "skill-installer"):
@@ -1078,8 +1106,9 @@ def health_check() -> dict:
                     "dir": str(child),
                     "skill_md_exists": True,
                     "frontmatter_ok": bool(meta.get("name") and meta.get("description")),
-                    "claude_registered": (CLAUDE_SKILLS / name / "SKILL.md").exists(),
-                    "in_registry": name in registry_names,
+                    "claude_registered": (safe_skill_path(CLAUDE_SKILLS, name) / "SKILL.md").exists(),
+                    "in_registry": True,  # External integration not performed by bundled installer
+            "registry_check": "not-performed",
                     "has_scripts": (child / "scripts").exists(),
                     "has_references": (child / "references").exists(),
                 }
@@ -1143,19 +1172,15 @@ def repair_health(verbose: bool = True) -> dict:
             skill_dir = Path(skill["dir"])
             skill_md = skill_dir / "SKILL.md"
             if skill_md.exists():
-                claude_dest = CLAUDE_SKILLS / name
+                claude_dest = safe_skill_path(CLAUDE_SKILLS, name)
                 if verbose:
                     _step(1, 2, f"Registering '{name}' in .claude/skills/...")
                 try:
-                    claude_dest.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(skill_md, claude_dest / "SKILL.md")
-                    # Also copy references/ if present
-                    refs = skill_dir / "references"
-                    if refs.exists():
-                        claude_refs = claude_dest / "references"
-                        if claude_refs.exists():
-                            shutil.rmtree(claude_refs)
-                        shutil.copytree(refs, claude_refs)
+                    if skill_dir != safe_skill_path(SKILLS_ROOT, name):
+                        raise ValueError("Nested registration requires explicit --source installation")
+                    registered = step7_register_claude(name)
+                    if not registered["success"]:
+                        raise ValueError(registered.get("error", "Registration failed"))
                     repairs.append({"skill": name, "action": "registered", "success": True})
                     if verbose:
                         _ok(f"Registered: {name}")
@@ -1266,13 +1291,22 @@ def rollback_skill(skill_name: str, verbose: bool = True) -> dict:
         print(f"\n{_C.bold(f'=== ROLLBACK: {skill_name} ===')}")
         print(f"  Backup: {latest_backup.name} ({timestamp})")
 
+    assert_regular_tree(latest_backup)
+    validation = validate(latest_backup)
+    if not validation["valid"]:
+        result["error"] = "Backup validation failed"
+        return result
+
     # Restore to skills root
-    dest = SKILLS_ROOT / skill_name
+    dest = safe_skill_path(SKILLS_ROOT, skill_name)
     if verbose:
         _step(1, 3, "Restoring from backup...")
 
     try:
         if dest.exists():
+            backup_current = step5_backup(skill_name)
+            if not backup_current["success"]:
+                raise ValueError("Cannot preserve current installation")
             shutil.rmtree(dest)
         shutil.copytree(latest_backup, dest, ignore=_backup_ignore, dirs_exist_ok=True)
         result["restored_from"] = str(latest_backup)
@@ -1298,8 +1332,11 @@ def rollback_skill(skill_name: str, verbose: bool = True) -> dict:
     if verbose:
         _step(3, 3, "Updating registry...")
     step8_update_registry()
+    if not reg["success"]:
+        result["error"] = "Files restored, but Claude registration failed"
+        return result
     if verbose:
-        _ok("Registry updated")
+        _ok("External registry integration skipped")
 
     # Log operation
     append_log({
@@ -1361,7 +1398,7 @@ def reinstall_all(force: bool = True, verbose: bool = True) -> dict:
             zip_status = _C.green("ZIP-OK") if zip_result.get("success") else _C.yellow("ZIP-WARN")
             print(f"    {status} registered  {zip_status}")
 
-    # Final registry update
+    # Final optional registry update
     if verbose:
         print(f"\n  Updating registry...")
     step8_update_registry()
@@ -1370,6 +1407,7 @@ def reinstall_all(force: bool = True, verbose: bool = True) -> dict:
     zipped_ok = sum(1 for r in results_list if r["zipped"])
 
     result = {
+        "success": registered_ok == len(results_list) and zipped_ok == len(results_list),
         "total": len(results_list),
         "registered": registered_ok,
         "zipped": zipped_ok,
@@ -1513,6 +1551,9 @@ def show_log(n: int = 20, verbose: bool = True) -> list:
 
 def main():
     args = sys.argv[1:]
+    if "--dry-run" in args and any(flag in args for flag in ("--uninstall", "--rollback", "--repair", "--reinstall-all")):
+        print(json.dumps({"success": False, "error": "--dry-run is supported only for installation; management action was not executed"}))
+        sys.exit(2)
 
     source = None
     name_override = None
@@ -1605,7 +1646,7 @@ def main():
         result = reinstall_all(force=True, verbose=not json_output)
         if json_output:
             print(json.dumps(result, indent=2, ensure_ascii=False))
-        sys.exit(0)
+        sys.exit(0 if result["success"] else 1)
 
     # ── Uninstall ──
     if do_uninstall:

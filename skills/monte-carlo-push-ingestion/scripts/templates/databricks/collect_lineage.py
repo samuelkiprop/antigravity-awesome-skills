@@ -29,12 +29,20 @@ from datetime import datetime, timezone
 from typing import Any
 
 from databricks import sql
+from _safe_paths import safe_existing_directory, safe_input_json_path, safe_output_json_path, write_json_file
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
 RESOURCE_TYPE = "databricks"
 LOOKBACK_DAYS: int = int(os.getenv("LOOKBACK_DAYS", "30"))  # ← SUBSTITUTE
+
+
+def _bounded_int(value: int, field: str, *, minimum: int, maximum: int) -> int:
+    value = int(value)
+    if value < minimum or value > maximum:
+        raise ValueError(f"{field} must be between {minimum} and {maximum}")
+    return value
 
 
 def _check_available_memory(min_gb: float = 2.0) -> None:
@@ -66,6 +74,8 @@ def _query(cursor: Any, sql_text: str) -> list[dict[str, Any]]:
         if not chunk:
             break
         rows.extend(dict(zip(cols, row)) for row in chunk)
+        if len(rows) > 100000:
+            raise ValueError("Collection exceeds 100000 rows; narrow scope instead of returning partial success")
     return rows
 
 
@@ -80,6 +90,7 @@ def _parse_full_name(full_name: str) -> tuple[str, str, str]:
 
 
 def collect_table_lineage(cursor: Any, lookback_days: int) -> list[dict[str, Any]]:
+    lookback_days = _bounded_int(lookback_days, "lookback_days", minimum=1, maximum=366)
     rows = _query(
         cursor,
         f"""
@@ -114,6 +125,7 @@ def collect_table_lineage(cursor: Any, lookback_days: int) -> list[dict[str, Any
 
 
 def collect_column_lineage(cursor: Any, lookback_days: int) -> list[dict[str, Any]]:
+    lookback_days = _bounded_int(lookback_days, "lookback_days", minimum=1, maximum=366)
     rows = _query(
         cursor,
         f"""
@@ -176,6 +188,7 @@ def collect(
 ) -> list[dict[str, Any]]:
     """Connect to Databricks, collect lineage, write a JSON manifest, and return events."""
     _check_available_memory(min_gb=2.0)
+    lookback_days = _bounded_int(lookback_days, "lookback_days", minimum=1, maximum=366)
     collected_at = datetime.now(timezone.utc).isoformat()
 
     with sql.connect(
@@ -201,8 +214,7 @@ def collect(
         "column_lineage_events": len(col_events),
         "events": all_events,
     }
-    with open(manifest_path, "w") as fh:
-        json.dump(manifest, fh, indent=2)
+    write_json_file(manifest_path, manifest)
     log.info("Manifest written to %s (%d events)", manifest_path, len(all_events))
 
     return all_events
@@ -212,7 +224,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Collect Databricks lineage to a manifest file")
     parser.add_argument("--host", default=os.getenv("DATABRICKS_HOST"))           # ← SUBSTITUTE
     parser.add_argument("--http-path", default=os.getenv("DATABRICKS_HTTP_PATH")) # ← SUBSTITUTE
-    parser.add_argument("--token", default=os.getenv("DATABRICKS_TOKEN"))         # ← SUBSTITUTE
+    parser.add_argument("--token", choices=[], default=os.getenv("DATABRICKS_TOKEN"))         # ← SUBSTITUTE
     parser.add_argument("--lookback-days", type=int, default=LOOKBACK_DAYS)
     parser.add_argument(
         "--column-lineage", action="store_true",

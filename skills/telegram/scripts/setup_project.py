@@ -12,10 +12,25 @@ import argparse
 import os
 import shutil
 import sys
+from pathlib import Path
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SKILL_DIR = os.path.dirname(SCRIPT_DIR)
 BOILERPLATE_DIR = os.path.join(SKILL_DIR, "assets", "boilerplate")
+
+
+def copy_tree_contents(source_dir: str, target_dir: str) -> None:
+    source_root = Path(source_dir)
+    target_root = Path(target_dir)
+    target_root.mkdir(parents=True, exist_ok=True)
+    for source_path in source_root.rglob("*"):
+        relative_path = source_path.relative_to(source_root)
+        target_path = target_root / relative_path
+        if source_path.is_dir():
+            target_path.mkdir(parents=True, exist_ok=True)
+        elif source_path.is_file():
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            target_path.write_bytes(source_path.read_bytes())
 
 
 def setup_nodejs(project_path: str, with_webhook: bool = False, with_ai: bool = False):
@@ -27,7 +42,7 @@ def setup_nodejs(project_path: str, with_webhook: bool = False, with_ai: bool = 
         sys.exit(1)
 
     # Copy boilerplate
-    shutil.copytree(src_dir, project_path, dirs_exist_ok=True)
+    copy_tree_contents(src_dir, project_path)
 
     print(f"Node.js project created at: {project_path}")
     print("\nNext steps:")
@@ -40,7 +55,7 @@ def setup_nodejs(project_path: str, with_webhook: bool = False, with_ai: bool = 
     if with_webhook:
         print("\n  Webhook mode enabled - configure WEBHOOK_URL in .env")
     if with_ai:
-        print("\n  AI integration enabled - configure ANTHROPIC_API_KEY in .env")
+        print("\n  AI integration is not bundled; implement and test a provider adapter separately.")
 
 
 def setup_python(project_path: str, with_webhook: bool = False, with_ai: bool = False):
@@ -52,7 +67,7 @@ def setup_python(project_path: str, with_webhook: bool = False, with_ai: bool = 
         sys.exit(1)
 
     # Copy boilerplate
-    shutil.copytree(src_dir, project_path, dirs_exist_ok=True)
+    copy_tree_contents(src_dir, project_path)
 
     print(f"Python project created at: {project_path}")
     print("\nNext steps:")
@@ -64,7 +79,7 @@ def setup_python(project_path: str, with_webhook: bool = False, with_ai: bool = 
     if with_webhook:
         print("  5. python webhook_server.py  (webhook mode)")
     if with_ai:
-        print("\n  AI integration enabled - configure ANTHROPIC_API_KEY in .env")
+        print("\n  AI integration is not bundled; implement and test a provider adapter separately.")
 
 
 def main():
@@ -77,7 +92,7 @@ def main():
     parser.add_argument("--with-webhook", action="store_true",
                         help="Include webhook server setup")
     parser.add_argument("--with-ai", action="store_true",
-                        help="Include AI integration boilerplate")
+                        help="Print guidance for adding an AI adapter (not bundled)")
     parser.add_argument("--force", action="store_true",
                         help="Overwrite existing directory")
     args = parser.parse_args()

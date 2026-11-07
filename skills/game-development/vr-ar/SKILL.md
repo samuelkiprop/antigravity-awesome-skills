@@ -1,7 +1,7 @@
 ---
 name: vr-ar
 description: "VR/AR development principles. Comfort, interaction, performance requirements."
-risk: unknown
+risk: none
 source: community
 date_added: "2026-02-27"
 ---
@@ -41,7 +41,7 @@ date_added: "2026-02-27"
 | Cause | Solution |
 |-------|----------|
 | **Locomotion** | Teleport, snap turn |
-| **Low FPS** | Maintain 90 FPS |
+| **Low FPS** | Meet the selected headset refresh rate consistently |
 | **Camera shake** | Avoid or minimize |
 | **Rapid acceleration** | Gradual movement |
 
@@ -56,7 +56,9 @@ date_added: "2026-02-27"
 
 ## 3. Performance Requirements
 
-### Target Metrics
+### Historical hardware examples
+
+Panel resolution is not the recommended render-target resolution. Verify supported refresh modes, runtime scaling and device support before setting a budget.
 
 | Platform | FPS | Resolution |
 |----------|-----|------------|
@@ -68,7 +70,7 @@ date_added: "2026-02-27"
 ### Frame Budget
 
 - VR requires consistent frame times
-- Single dropped frame = visible judder
+- Dropped frames can produce judder; reprojection does not remove the need for stable timing
 - 90 FPS = 11.11ms budget
 
 ---
@@ -96,7 +98,7 @@ date_added: "2026-02-27"
 
 ### World Scale
 
-- 1 unit = 1 meter (critical)
+- Calibrate engine world scale against real meters; engine unit conventions differ
 - Objects must feel right size
 - Test with real measurements
 
@@ -116,7 +118,7 @@ date_added: "2026-02-27"
 | ❌ Don't | ✅ Do |
 |----------|-------|
 | Move camera without player | Player controls camera |
-| Drop below 90 FPS | Maintain frame rate |
+| Miss the selected refresh budget | Profile frame timing on the target headset |
 | Use tiny UI text | Large, readable text |
 | Ignore arm length | Scale to player reach |
 
@@ -125,9 +127,19 @@ date_added: "2026-02-27"
 > **Remember:** Comfort is not optional. Sick players don't play.
 
 ## When to Use
-This skill is applicable to execute the workflow or actions described in the overview.
+Use when designing immersive locomotion, spatial interaction and comfort settings, or measuring frame times on a target headset.
+
+## Example
+
+**User request:**
+
+> Use @vr-ar for this task: VR/AR development principles.
 
 ## Limitations
 - Use this skill only when the task clearly matches the scope described above.
 - Do not treat the output as a substitute for environment-specific validation, testing, or expert review.
 - Stop and ask for clarification if required inputs, permissions, safety boundaries, or success criteria are missing.
+
+## Verification
+
+Treat tables as design starting points, not guarantees. Prototype the selected mechanic, test accessibility and recovery paths, and measure frame timing, memory and behavior on target hardware before claiming completion. Store submission and licensing requirements must be checked against current official platform documentation.

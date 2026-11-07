@@ -19,16 +19,20 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import getpass
+import hmac
 import html
 import json
 import os
+import secrets
 import sys
+import time
 import webbrowser
 from datetime import datetime, timedelta, timezone
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from typing import Optional
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -62,10 +66,29 @@ def _mask_secret(value: str, keep: int = 4) -> str:
 class OAuthCallbackHandler(BaseHTTPRequestHandler):
     """Servidor HTTP mínimo para capturar o callback OAuth."""
     authorization_code: Optional[str] = None
+    expected_state: Optional[str] = None
 
     def do_GET(self):
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
+
+        expected_path = urlparse(OAUTH_REDIRECT_URI).path or "/"
+        supplied_states = params.get("state", [])
+        state_is_valid = (
+            len(supplied_states) == 1
+            and OAuthCallbackHandler.expected_state is not None
+            and hmac.compare_digest(supplied_states[0], OAuthCallbackHandler.expected_state)
+        )
+
+        if parsed.path != expected_path or not state_is_valid:
+            self.send_response(400)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(
+                b"<html><body><h2>Callback OAuth non valido.</h2>"
+                b"<p>Ripeti l'autorizzazione dal terminale.</p></body></html>"
+            )
+            return
 
         if "code" in params:
             OAuthCallbackHandler.authorization_code = params["code"][0]
@@ -91,20 +114,23 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
         pass  # silencia logs do servidor
 
 
-def wait_for_oauth_code() -> Optional[str]:
+def wait_for_oauth_code(expected_state: str) -> Optional[str]:
     """Inicia servidor local e espera pelo código de autorização."""
+    OAuthCallbackHandler.authorization_code = None
+    OAuthCallbackHandler.expected_state = expected_state
     server = HTTPServer(("localhost", OAUTH_REDIRECT_PORT), OAuthCallbackHandler)
-    server.timeout = 120  # 2 minutos
+    server.timeout = 1
+    deadline = time.monotonic() + 120
     print("Aguardando autorização no callback OAuth local...")
     print("(Timeout: 2 minutos)\n")
 
-    while OAuthCallbackHandler.authorization_code is None:
+    while OAuthCallbackHandler.authorization_code is None and time.monotonic() < deadline:
         server.handle_request()
-        if OAuthCallbackHandler.authorization_code is not None:
-            break
 
     server.server_close()
-    return OAuthCallbackHandler.authorization_code
+    code = OAuthCallbackHandler.authorization_code
+    OAuthCallbackHandler.expected_state = None
+    return code
 
 
 # ── Token Exchange ────────────────────────────────────────────────────────────
@@ -260,7 +286,7 @@ async def auto_refresh_if_needed(account_id: Optional[int] = None) -> Optional[s
             print(f"Token renovado. Nova expiração: {new_expires[:10]}")
             return new_token
         except Exception as e:
-            print(f"AVISO: Falha ao renovar token: {e}")
+            print(f"AVISO: Falha ao renovar token ({type(e).__name__}); reautorização pode ser necessária")
             return token
 
     return token
@@ -280,29 +306,29 @@ async def setup() -> None:
 
     # App credentials
     app_id = os.environ.get("INSTAGRAM_APP_ID") or input("App ID: ").strip()
-    app_secret = os.environ.get("INSTAGRAM_APP_SECRET") or input("App Secret: ").strip()
+    app_secret = os.environ.get("INSTAGRAM_APP_SECRET") or getpass.getpass("App Secret: ").strip()
 
     if not app_id or not app_secret:
         print("ERRO: App ID e App Secret são obrigatórios.")
         sys.exit(1)
 
     # Construir URL de autorização
-    scopes = ",".join(OAUTH_SCOPES)
-    auth_url = (
-        f"{OAUTH_AUTHORIZE_URL}?"
-        f"client_id={app_id}&"
-        f"redirect_uri={OAUTH_REDIRECT_URI}&"
-        f"scope={scopes}&"
-        f"response_type=code"
-    )
+    oauth_state = secrets.token_urlsafe(32)
+    auth_params = {
+        'client_id': app_id,
+        'redirect_uri': OAUTH_REDIRECT_URI,
+        'scope': ','.join(OAUTH_SCOPES),
+        'response_type': 'code',
+        'state': oauth_state,
+    }
+    auth_url = f"{OAUTH_AUTHORIZE_URL}?{urlencode(auth_params)}"
 
     print("\nAbrindo browser para autorização...")
     print("A URL de autorização e o App ID não serão exibidos para evitar vazamento de credenciais.\n")
     webbrowser.open(auth_url)
 
     # Esperar callback
-    OAuthCallbackHandler.authorization_code = None
-    code = wait_for_oauth_code()
+    code = wait_for_oauth_code(oauth_state)
 
     if not code:
         print("ERRO: Timeout ou falha na autorização.")
@@ -350,7 +376,7 @@ async def setup() -> None:
     print(f"  Token expira: {expires_at[:10]}")
     print(f"  Account ID (interno): {account_id}")
     print()
-    print("Pronto! Use 'python scripts/status.py' para verificar.")
+    print("Pronto! Use 'python scripts/auth.py --status' para verificar.")
 
 
 async def show_status() -> None:
@@ -386,7 +412,7 @@ async def do_refresh() -> None:
     """Força renovação do token."""
     token = await auto_refresh_if_needed()
     if token:
-        print("Token renovado com sucesso.")
+        print("Token local disponível; verifique a validade/expiração. Renovação não é garantida.")
         await show_status()
     else:
         print("Nenhuma conta configurada para renovar.")
@@ -398,7 +424,7 @@ def main():
     group.add_argument("--setup", action="store_true", help="Configuração inicial completa")
     group.add_argument("--refresh", action="store_true", help="Renovar token")
     group.add_argument("--status", action="store_true", help="Ver status do token")
-    group.add_argument("--revoke", action="store_true", help="Revogar token (desativar conta)")
+    group.add_argument("--revoke", action="store_true", help="Desativar conta localmente (não revoga token na Meta)")
     args = parser.parse_args()
 
     if args.setup:
@@ -410,7 +436,8 @@ def main():
     elif args.revoke:
         account = db.get_active_account()
         if account:
-            db._connect().execute("UPDATE accounts SET is_active = 0 WHERE id = ?", [account["id"]])
+            with db._connect() as conn:
+                conn.execute("UPDATE accounts SET is_active = 0 WHERE id = ?", [account["id"]])
             print(f"Conta @{account['username']} desativada.")
         else:
             print("Nenhuma conta ativa para revogar.")

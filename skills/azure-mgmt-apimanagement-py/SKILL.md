@@ -1,7 +1,7 @@
 ---
 name: azure-mgmt-apimanagement-py
 description: Azure API Management SDK for Python. Use for managing APIM services, APIs, products, subscriptions, and policies.
-risk: unknown
+risk: critical
 source: community
 date_added: '2026-02-27'
 ---
@@ -35,6 +35,10 @@ client = ApiManagementClient(
     subscription_id=os.environ["AZURE_SUBSCRIPTION_ID"]
 )
 ```
+
+## Write and policy boundary
+
+Examples create paid infrastructure, publish access products and replace API policies. Confirm subscription/resource/API and authorized effects before execution. Preserve existing policy XML and inherited base policies, review the exact diff, and validate authentication/routing afterward; a sample full-policy replacement can remove existing protections. Do not use placeholder secret values or expose subscription keys.
 
 ## Create APIM Service
 
@@ -164,7 +168,7 @@ subscription = client.subscription.create_or_update(
     )
 )
 
-print(f"Subscription key: {subscription.primary_key}")
+print(f"Created subscription: {subscription.name}")  # Never log subscription keys.
 ```
 
 ## Set API Policy

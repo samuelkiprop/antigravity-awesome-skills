@@ -1,14 +1,18 @@
 ---
 name: web-games
-description: "Web browser game development principles. Framework selection, WebGPU, optimization, PWA."
-risk: unknown
+description: >-
+  Web browser game development. Framework selection (Phaser, PixiJS, Kaplay,
+  Canvas/WebGL, Three.js, Babylon.js), hybrid DOM+canvas, WebGPU, optimization,
+  PWA, audio unlock. Use when building HTML5/WebGL/WebGPU games or choosing a
+  browser runtime.
+risk: none
 source: community
 date_added: "2026-02-27"
 ---
 
 # Web Browser Game Development
 
-> Framework selection and browser-specific principles.
+> Framework selection and browser-specific principles. For stack choice details see `game-development/engine-selection`.
 
 ---
 
@@ -20,45 +24,57 @@ date_added: "2026-02-27"
 What type of game?
 │
 ├── 2D Game
-│   ├── Full game engine features? → Phaser
-│   └── Raw rendering power? → PixiJS
+│   ├── Full game engine features? → Phaser 4
+│   ├── Fast prototype / jam?      → Kaplay
+│   ├── Raw rendering power?       → PixiJS 8
+│   └── Tiny / no dependency?      → Raw Canvas / WebGL
 │
 ├── 3D Game
 │   ├── Full engine (physics, XR)? → Babylon.js
-│   └── Rendering focused? → Three.js
+│   └── Rendering focused?         → Three.js
 │
-└── Hybrid / Canvas
-    └── Custom → Raw Canvas/WebGL
+├── Hybrid (DOM UI + canvas moments)
+│   └── Custom shell + guest viewport
+│       (Canvas/Kaplay/Phaser/Pixi inside a region/modal)
+│
+└── Narrative-first
+    └── Ink (inkjs) or Twine export + DOM host
 ```
 
-### Comparison (2025)
+### Comparison
 
 | Framework | Type | Best For |
 |-----------|------|----------|
-| **Phaser 4** | 2D | Full game features |
-| **PixiJS 8** | 2D | Rendering, UI |
-| **Three.js** | 3D | Visualizations, lightweight |
-| **Babylon.js 7** | 3D | Full engine, XR |
+| **Raw Canvas / WebGL** | 2D / low-level | Small scope, full control |
+| **Kaplay** | 2D toolkit | Rapid prototypes |
+| **Phaser 4** | 2D engine | Full game features |
+| **PixiJS 8** | 2D renderer | Rendering, custom systems |
+| **Three.js** | 3D renderer | Visualizations, lightweight 3D |
+| **Babylon.js** | 3D engine | Full engine, XR |
+
+### Hybrid shell + guest
+
+Use when chrome is HTML (menus, inventories, text, dashboards) but bursts of play need a canvas:
+
+1. Mount guest in a container; pass context in.
+2. Run a **local** game loop in the guest.
+3. Return results (score, pass/fail); **destroy** guest (RAF, listeners, GL context as needed).
+
+Do not let the guest own global app routing unless the product *is* a full-screen game.
 
 ---
 
 ## 2. WebGPU Adoption
 
-### Browser Support (2025)
+### Runtime support
 
-| Browser | Support |
-|---------|---------|
-| Chrome | ✅ Since v113 |
-| Edge | ✅ Since v113 |
-| Firefox | ✅ Since v131 |
-| Safari | ✅ Since 18.0 |
-| **Total** | **~73%** global |
+WebGPU support depends on browser version, OS, adapter, driver and secure context; do not infer availability from a browser-name table or a historical global percentage. See [MDN WebGPU](https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API).
 
 ### Decision
 
-- **New projects**: Use WebGPU with WebGL fallback
-- **Legacy support**: Start with WebGL
-- **Feature detection**: Check `navigator.gpu`
+- **New GPU-heavy projects**: Use WebGPU with WebGL fallback
+- **Broad legacy / simple 2D**: Start with WebGL or Canvas 2D
+- **Feature detection**: Check `navigator.gpu`, handle a null `requestAdapter()` result, device creation failures and device loss; offer a tested fallback
 
 ---
 
@@ -68,8 +84,8 @@ What type of game?
 
 | Constraint | Strategy |
 |------------|----------|
-| No local file access | Asset bundling, CDN |
-| Tab throttling | Pause when hidden |
+| Local files require user-granted access or selected file input | Respect permissions; bundle public assets |
+| Tab throttling | Pause when hidden (`visibilitychange`) |
 | Mobile data limits | Compress assets |
 | Audio autoplay | Require user interaction |
 
@@ -85,15 +101,11 @@ What type of game?
 
 ## 4. Asset Strategy
 
-### Compression Formats
-
 | Type | Format |
 |------|--------|
-| Textures | KTX2 + Basis Universal |
+| Textures | KTX2 + Basis Universal (or WebP/PNG for simple 2D) |
 | Audio | WebM/Opus (fallback: MP3) |
 | 3D Models | glTF + Draco/Meshopt |
-
-### Loading Strategy
 
 | Phase | Load |
 |-------|------|
@@ -105,35 +117,16 @@ What type of game?
 
 ## 5. PWA for Games
 
-### Benefits
-
-- Offline play
-- Install to home screen
-- Full screen mode
-- Push notifications
-
-### Requirements
-
-- Service worker for caching
-- Web app manifest
-- HTTPS
+**Benefits:** offline play, install, fullscreen, optional push.
+**Installation:** requirements vary by browser; use an appropriate web app manifest and secure context. A service worker is useful for offline behavior but is not universally an installation prerequisite. Explicitly implement and test cache/version updates and offline recovery; installation alone does not provide offline gameplay. [Installability guidance](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable).
 
 ---
 
 ## 6. Audio Handling
 
-### Browser Requirements
-
-- Audio context requires user interaction
-- Create AudioContext on first click/tap
-- Resume context if suspended
-
-### Best Practices
-
-- Use Web Audio API
-- Pool audio sources
-- Preload common sounds
-- Compress with WebM/Opus
+- Create/resume `AudioContext` on first click/tap
+- Prefer Web Audio API; reuse decoded AudioBuffers, but create a new AudioBufferSourceNode for each playback (source nodes are one-shot); preload common SFX
+- Compress with WebM/Opus when possible
 
 ---
 
@@ -146,15 +139,18 @@ What type of game?
 | Block on audio load | Lazy load audio |
 | Skip compression | Compress everything |
 | Assume fast connection | Handle slow networks |
+| Leave canvas engines running off-screen | Tear down guests |
 
 ---
 
 > **Remember:** Browser is the most accessible platform. Respect its constraints.
 
 ## When to Use
-This skill is applicable to execute the workflow or actions described in the overview.
+
+Use when building HTML5/WebGL/WebGPU games, choosing a browser runtime, or wiring hybrid DOM+canvas guests.
 
 ## Limitations
+
 - Use this skill only when the task clearly matches the scope described above.
 - Do not treat the output as a substitute for environment-specific validation, testing, or expert review.
 - Stop and ask for clarification if required inputs, permissions, safety boundaries, or success criteria are missing.

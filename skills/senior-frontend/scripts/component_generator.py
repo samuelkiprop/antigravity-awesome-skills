@@ -13,6 +13,7 @@ Usage:
 
 import argparse
 import os
+import re
 import sys
 from pathlib import Path
 from datetime import datetime
@@ -25,7 +26,7 @@ TEMPLATES = {
 import {{ useState }} from 'react';
 import {{ cn }} from '@/lib/utils';
 
-interface {name}Props {{
+export interface {name}Props {{
   className?: string;
   children?: React.ReactNode;
 }}
@@ -41,7 +42,7 @@ export function {name}({{ className, children }}: {name}Props) {{
 
     "server": '''import {{ cn }} from '@/lib/utils';
 
-interface {name}Props {{
+export interface {name}Props {{
   className?: string;
   children?: React.ReactNode;
 }}
@@ -57,11 +58,11 @@ export async function {name}({{ className, children }}: {name}Props) {{
 
     "hook": '''import {{ useState, useEffect, useCallback }} from 'react';
 
-interface Use{name}Options {{
+export interface Use{name}Options {{
   // Add options here
 }}
 
-interface Use{name}Return {{
+export interface Use{name}Return {{
   // Add return type here
   isLoading: boolean;
   error: Error | null;
@@ -94,7 +95,7 @@ describe('{name}', () => {{
 
   it('applies custom className', () => {{
     render(<{name} className="custom-class">Content</{name}>);
-    expect(screen.getByText('Content').parentElement).toHaveClass('custom-class');
+    expect(screen.getByText('Content')).toHaveClass('custom-class');
   }});
 
   // Add more tests here
@@ -138,12 +139,49 @@ export type {{ {name}Props }} from './{name}';
 ''',
 }
 
+_COMPONENT_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
+
+
+def _safe_component_name(name: str) -> str:
+    name = name.strip()
+    if not _COMPONENT_NAME_RE.fullmatch(name):
+        raise ValueError("Component name must start with a letter and contain only letters, numbers, hyphens, or underscores")
+    return name
+
+
+def _safe_component_dir(output_dir: Path, pascal_name: str, flat: bool) -> Path:
+    output_root = output_dir.resolve()
+    component_dir = output_root if flat else (output_root / pascal_name).resolve()
+    component_dir.relative_to(output_root)
+    return component_dir
+
+
+def _safe_output_dir(raw_dir: str) -> Path:
+    raw = str(raw_dir).strip()
+    if "\x00" in raw:
+        raise ValueError("Output directory contains an invalid null byte")
+    parts = Path(raw).parts
+    if any(part == ".." for part in parts):
+        raise ValueError("Output directory must not contain '..' segments")
+    return Path(raw).expanduser().resolve()
+
+
+def _safe_component_file(component_dir: Path, filename: str) -> Path:
+    if "/" in filename or "\\" in filename or "\x00" in filename or ".." in filename:
+        raise ValueError(f"Unsafe generated filename: {filename}")
+    if (component_dir / filename).is_symlink():
+        raise ValueError("Refusing symlink output")
+    target = (component_dir / filename).resolve()
+    target.relative_to(component_dir.resolve())
+    return target
+
 
 def to_pascal_case(name: str) -> str:
     """Convert string to PascalCase."""
+    name = _safe_component_name(name)
     # Handle kebab-case and snake_case
     words = name.replace('-', '_').split('_')
-    return ''.join(word.capitalize() for word in words)
+    return ''.join(word[:1].upper() + word[1:] for word in words if word)
 
 
 def to_kebab_case(name: str) -> str:
@@ -170,10 +208,7 @@ def generate_component(
     kebab_name = to_kebab_case(pascal_name)
 
     # Determine output path
-    if flat:
-        component_dir = output_dir
-    else:
-        component_dir = output_dir / pascal_name
+    component_dir = _safe_component_dir(output_dir, pascal_name, flat)
 
     files_created = []
 
@@ -182,35 +217,41 @@ def generate_component(
 
     # Generate main component file
     if component_type == "hook":
-        main_file = component_dir / f"use{pascal_name}.ts"
+        main_file = _safe_component_file(component_dir, f"use{pascal_name}.ts")
         template = TEMPLATES["hook"]
     else:
-        main_file = component_dir / f"{pascal_name}.tsx"
+        main_file = _safe_component_file(component_dir, f"{pascal_name}.tsx")
         template = TEMPLATES[component_type]
 
     content = template.format(name=pascal_name)
-    main_file.write_text(content)
+    with main_file.open("x", encoding="utf-8") as handle:
+        handle.write(content)
     files_created.append(str(main_file))
 
     # Generate test file
     if with_test and component_type != "hook":
-        test_file = component_dir / f"{pascal_name}.test.tsx"
+        test_file = _safe_component_file(component_dir, f"{pascal_name}.test.tsx")
         test_content = TEMPLATES["test"].format(name=pascal_name)
-        test_file.write_text(test_content)
+        with test_file.open("x", encoding="utf-8") as handle:
+            handle.write(test_content)
         files_created.append(str(test_file))
 
     # Generate story file
     if with_story and component_type != "hook":
-        story_file = component_dir / f"{pascal_name}.stories.tsx"
+        story_file = _safe_component_file(component_dir, f"{pascal_name}.stories.tsx")
         story_content = TEMPLATES["story"].format(name=pascal_name)
-        story_file.write_text(story_content)
+        with story_file.open("x", encoding="utf-8") as handle:
+            handle.write(story_content)
         files_created.append(str(story_file))
 
     # Generate index file
     if with_index and not flat:
-        index_file = component_dir / "index.ts"
-        index_content = TEMPLATES["index"].format(name=pascal_name)
-        index_file.write_text(index_content)
+        index_file = _safe_component_file(component_dir, "index.ts")
+        index_content = (f"export {{ use{pascal_name} }} from './use{pascal_name}';\n"
+                         f"export type {{ Use{pascal_name}Options, Use{pascal_name}Return }} from './use{pascal_name}';\n"
+                         if component_type == "hook" else TEMPLATES["index"].format(name=pascal_name))
+        with index_file.open("x", encoding="utf-8") as handle:
+            handle.write(index_content)
         files_created.append(str(index_file))
 
     return {
@@ -244,13 +285,30 @@ def print_result(result: dict, verbose: bool = False) -> None:
         print(f"\n  const {{ isLoading, error }} = use{result['name']}();")
 
 
+def self_test() -> None:
+    assert to_pascal_case("product-card") == "ProductCard"
+    for bad_name in ("../Card", "Bad.Name", "", "1Card"):
+        try:
+            to_pascal_case(bad_name)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"accepted unsafe component name: {bad_name!r}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Generate React/Next.js components with TypeScript and Tailwind CSS"
     )
     parser.add_argument(
         "name",
+        nargs="?",
         help="Component name (PascalCase or kebab-case)"
+    )
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="Run safety self-checks"
     )
     parser.add_argument(
         "--dir", "-d",
@@ -296,7 +354,14 @@ def main():
 
     args = parser.parse_args()
 
-    output_dir = Path(args.dir)
+    if args.self_test:
+        self_test()
+        return
+
+    if not args.name:
+        parser.error("name is required unless --self-test is used")
+
+    output_dir = _safe_output_dir(args.dir)
     pascal_name = to_pascal_case(args.name)
 
     if args.dry_run:

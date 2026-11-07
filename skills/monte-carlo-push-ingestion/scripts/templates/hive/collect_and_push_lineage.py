@@ -15,12 +15,11 @@ Substitution points
 
 Prerequisites
 -------------
-    pip install pycarlo python-dotenv
+    python -m pip install pycarlo==0.15.491 python-dotenv
 
 Usage (table-level):
     python collect_and_push_lineage.py \\
         --key-id  <MCD_INGEST_ID> \\
-        --key-token <MCD_INGEST_TOKEN> \\
         --resource-uuid <MCD_RESOURCE_UUID> \\
         --log-file /tmp/root/hive.log
 
@@ -33,7 +32,8 @@ import json
 import os
 
 from collect_lineage import collect
-from push_lineage import DEFAULT_BATCH_SIZE, DEFAULT_TIMEOUT_SECONDS, push
+from push_lineage import DEFAULT_BATCH_SIZE, push
+from _safe_paths import safe_existing_directory, safe_input_json_path, safe_output_json_path, write_json_file
 
 
 def main() -> None:
@@ -53,7 +53,7 @@ def main() -> None:
         help="Monte Carlo ingestion key ID (env: MCD_INGEST_ID)",
     )
     parser.add_argument(
-        "--key-token",
+        "--key-token", choices=[],
         default=os.environ.get("MCD_INGEST_TOKEN"),
         help="Monte Carlo ingestion key token (env: MCD_INGEST_TOKEN)",
     )
@@ -79,13 +79,6 @@ def main() -> None:
         metavar="N",
         help=f"Max events per POST (default: {DEFAULT_BATCH_SIZE})",
     )
-    parser.add_argument(
-        "--timeout",
-        type=int,
-        default=DEFAULT_TIMEOUT_SECONDS,
-        metavar="SEC",
-        help=f"HTTP timeout per request in seconds (default: {DEFAULT_TIMEOUT_SECONDS})",
-    )
     args = parser.parse_args()
 
     if not args.key_id or not args.key_token:
@@ -106,11 +99,9 @@ def main() -> None:
         key_token=args.key_token,
         column_lineage=args.column_lineage,
         batch_size=args.batch_size,
-        timeout_seconds=args.timeout,
     )
 
-    with open(args.output_file, "w") as fh:
-        json.dump(manifest, fh, indent=2)
+    write_json_file(args.output_file, manifest)
     print(f"Lineage manifest written to {args.output_file}")
     print("Done.")
 

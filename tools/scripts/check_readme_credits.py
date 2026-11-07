@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import subprocess
 import sys
 from collections.abc import Mapping
 from datetime import date, datetime
@@ -13,6 +12,7 @@ from pathlib import Path
 import yaml
 
 from _project_paths import find_repo_root
+from git_change_records import read_change_records, read_path
 
 
 GITHUB_REPO_PATTERN = re.compile(r"https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)")
@@ -53,42 +53,25 @@ def normalize_repo_slug(value: str | None) -> str | None:
     candidate = value.strip().strip('"').strip("'")
     if candidate.startswith("https://github.com/"):
         candidate = candidate[len("https://github.com/") :]
-    candidate = candidate.rstrip("/")
-    candidate = candidate.removesuffix(".git")
     candidate = candidate.split("#", 1)[0]
     candidate = candidate.split("?", 1)[0]
+    candidate = candidate.rstrip("/")
+    candidate = candidate.removesuffix(".git")
 
-    match = re.match(r"^([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)", candidate)
-    if not match:
+    if not SOURCE_REPO_PATTERN.fullmatch(candidate):
         return None
-    return match.group(1).lower()
-
-
-def run_git(args: list[str], cwd: str | Path, capture: bool = True) -> str:
-    result = subprocess.run(
-        ["git", *args],
-        cwd=str(cwd),
-        check=False,
-        capture_output=capture,
-        text=True,
-    )
-    if result.returncode != 0:
-        stderr = result.stderr.strip() if capture and result.stderr else ""
-        raise RuntimeError(stderr or f"git {' '.join(args)} failed with exit code {result.returncode}")
-    return result.stdout.strip() if capture else ""
+    return candidate.lower()
 
 
 def get_changed_files(base_dir: str | Path, base_ref: str, head_ref: str) -> list[str]:
-    output = run_git(["diff", "--name-only", f"{base_ref}...{head_ref}"], cwd=base_dir)
-    files = []
-    seen = set()
-    for raw_line in output.splitlines():
-        normalized = raw_line.replace("\\", "/").strip()
-        if not normalized or normalized in seen:
-            continue
-        seen.add(normalized)
-        files.append(normalized)
-    return files
+    _, _, records = read_change_records(base_dir, base_ref, head_ref, merge_base=True)
+    files = {
+        path
+        for record in records
+        for path in (record.old_path, record.new_path)
+        if path is not None
+    }
+    return sorted(files)
 
 
 def is_skill_file(file_path: str) -> bool:
@@ -138,21 +121,58 @@ def classify_source(metadata: dict[str, object]) -> str | None:
     return None
 
 
+def credit_sets_for_head(root, head_oid, skill_files, readme_text):
+    readme_credit_sets = extract_credit_repos(readme_text)
+    ledger_blob = read_path(root, head_oid, "data/source-credits.json")
+    generated_credits = ledger_blob is not None
+    if generated_credits:
+        from sync_source_credits import load_ledger, render_sections, TITLES
+        ledger = load_ledger(ledger_blob.decode("utf-8"))
+        changed_metadata = []
+        for skill_path in skill_files:
+            blob = read_path(root, head_oid, skill_path)
+            if blob is not None:
+                changed_metadata.append((skill_path[len("skills/"):-len("/SKILL.md")], parse_frontmatter(blob.decode("utf-8"))))
+        preview = render_sections(ledger, changed_metadata)
+        readme_credit_sets = extract_credit_repos("\n".join("### " + TITLES[k] + "\n" + v for k,v in preview.items()))
+
+    return readme_credit_sets, generated_credits
+
+
 def collect_reports(base_dir: str | Path, base_ref: str, head_ref: str) -> dict[str, object]:
     root = Path(base_dir)
-    changed_files = get_changed_files(root, base_ref, head_ref)
-    skill_files = [file_path for file_path in changed_files if is_skill_file(file_path)]
-    readme_path = root / "README.md"
-    readme_text = readme_path.read_text(encoding="utf-8")
-    readme_credit_sets = extract_credit_repos(readme_text)
+    base_oid, head_oid, records = read_change_records(root, base_ref, head_ref, merge_base=True)
+    changed_files = sorted(
+        {
+            path
+            for record in records
+            for path in (record.old_path, record.new_path)
+            if path is not None
+        }
+    )
+    # Validate only destination snapshots. Deleted files have no head content;
+    # rename destinations are checked under their new identity.
+    skill_files = sorted(
+        {
+            record.new_path
+            for record in records
+            if record.new_path is not None and is_skill_file(record.new_path)
+        }
+    )
+    readme_blob = read_path(root, head_oid, "README.md")
+    readme_text = (readme_blob or b"").decode("utf-8", "replace")
+    readme_credit_sets, generated_credits = credit_sets_for_head(root, head_oid, skill_files, readme_text)
 
     warnings: list[str] = []
     errors: list[str] = []
     checked_skills: list[dict[str, object]] = []
 
     for rel_path in skill_files:
-        skill_path = root / rel_path
-        content = skill_path.read_text(encoding="utf-8")
+        content_blob = read_path(root, head_oid, rel_path)
+        if content_blob is None:
+            errors.append(f"{rel_path}: destination SKILL.md is missing from head snapshot")
+            continue
+        content = content_blob.decode("utf-8", "replace")
         metadata = parse_frontmatter(content)
 
         source_type = classify_source(metadata)
@@ -202,6 +222,10 @@ def collect_reports(base_dir: str | Path, base_ref: str, head_ref: str) -> dict[
         # required attribution instead of reporting duplicate noise.
 
     return {
+        "generated_credits_preview": generated_credits,
+        "base_oid": base_oid,
+        "head_oid": head_oid,
+        "change_records": [record.to_dict() for record in records],
         "changed_files": changed_files,
         "skill_files": skill_files,
         "checked_skills": checked_skills,

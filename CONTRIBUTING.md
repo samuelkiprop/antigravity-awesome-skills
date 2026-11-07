@@ -1,539 +1,99 @@
-# 🤝 Contributing Guide - Make It Easy for Everyone!
+# Contributing to Agentic Awesome Skills
 
-**Thank you for wanting to make this repo better!** This guide shows you exactly how to contribute, even if you're new to open source.
+Contribute a focused skill, correct an existing one, improve documentation, or report a reproducible problem. Small corrections can go directly to a PR; an issue is not required.
 
----
+## Choose a contribution
 
-## Quick Start for Contributors
+| Change | What to explain |
+| --- | --- |
+| New skill | The concrete task, the gap compared with existing skills, and one usable example |
+| Skill correction | The previous behavior, the corrected behavior, and how you checked it |
+| Upstream update | The upstream repository and full commit, changed capabilities, local adaptations retained, and license notices |
+| Documentation/tooling | The user-visible problem, resulting behavior, and relevant checks |
 
-```bash
-# 1. Fork and clone
-git clone https://github.com/YOUR-USERNAME/antigravity-awesome-skills.git
-cd antigravity-awesome-skills
+Search the catalog and open PRs first. Prefer extending an existing skill when it already covers the task. Discuss overlapping batches, shared dependencies and executable bundles before building a large contribution. Send independent changes in separate PRs; do not copy a shared core into multiple overlapping batches.
 
-# 2. Install dependencies
-npm install
+## Prepare your branch
 
-# 3. Create your skill
-mkdir -p skills/my-awesome-skill
-
-# 4. Use the canonical template
-cp docs/contributors/skill-template.md skills/my-awesome-skill/SKILL.md
-
-# 5. Edit and validate
-npm run validate
-
-# For SKILL.md with shell/network/credential/mutation guidance:
-npm run security:docs
-
-# 6. Open a PR
-git add skills/my-awesome-skill/
-git commit -m "feat: add my-awesome-skill for [purpose]"
-git push origin my-branch
-```
-
-Open the PR with the default template and enable **Allow edits from maintainers** so conflicts can be resolved without extra back-and-forth.
-If your PR adds or edits `SKILL.md`, GitHub will also run the automated `skill-review` workflow on the pull request.
-Community PRs should stay **source-only**: do not include generated registry artifacts such as `CATALOG.md`, `skills_index.json`, or `data/*.json`.
-
-Automated validation is necessary, but it does **not** replace manual logic review. If your PR adds or changes a skill, or introduces command, network, credential, mutation, install, or security guidance, review the logic and failure modes manually even when every automated check passes.
-
-If you only want to improve docs, editing directly in GitHub is still perfectly fine.
-
----
-
-## Ways to Contribute
-
-You don't need to be an expert! Here are ways anyone can help:
-
-### 1. Improve Documentation (Easiest!)
-- Fix typos or grammar
-- Make explanations clearer
-- Add examples to existing skills
-- Translate documentation to other languages
-
-### 2. Report Issues
-- Found a reproducible bug? Open an Issue.
-- Need help, want feedback, or have an early-stage idea? Start a Discussion.
-- Skill not working? If you can reproduce it, open an Issue. If you're unsure, start in Q&A.
-
-### 3. Create New Skills
-- Share your expertise as a skill
-- Fill gaps in the current collection
-- Improve existing skills
-
-### 4. Test and Validate
-- Try skills and report what works/doesn't work
-- Test on different AI tools
-- Suggest improvements
-
----
-
-## How to Improve Documentation
-
-### Super Easy Method (No Git Knowledge Needed!)
-
-1. **Find the file** you want to improve on GitHub
-2. **Click the pencil icon** (✏️) to edit
-3. **Make your changes** in the browser
-4. **Click "Propose changes"** at the bottom
-5. **Done!** We'll review and merge it
-
-### Using Git (If You Know How)
+Requirements: Node.js 22+, Git, Python 3 with PyYAML (see `tools/requirements.txt`). Fork the repository on GitHub, then:
 
 ```bash
-# 1. Fork the repo on GitHub (click the Fork button)
-
-# 2. Clone your fork
-git clone https://github.com/YOUR-USERNAME/antigravity-awesome-skills.git
-cd antigravity-awesome-skills
-
-# 3. Create a branch
-git checkout -b improve-docs
-
-# 4. Make your changes
-# Edit files in your favorite editor
-
-# 5. Commit and push
-git add .
-git commit -m "docs: make XYZ clearer"
-git push origin improve-docs
-
-# 6. Open a Pull Request on GitHub
+git clone https://github.com/YOUR-USERNAME/agentic-awesome-skills.git
+cd agentic-awesome-skills
+git remote add upstream https://github.com/sickn33/agentic-awesome-skills.git
+git fetch upstream main
+git switch -c add-my-skill upstream/main
+npm ci --ignore-scripts
+python3 -m venv .venv
+.venv/bin/python -m pip install -r tools/requirements.txt
+export ANTIGRAVITY_PYTHON="$PWD/.venv/bin/python"
 ```
 
----
+On Windows, use `.venv\Scripts\python.exe` for the environment's Python and set `$env:ANTIGRAVITY_PYTHON` to its absolute path in PowerShell. The repository Python runner uses `ANTIGRAVITY_PYTHON`; keep it set for the validation commands. If `upstream` already exists, verify it points to the official repository instead of adding it again.
 
-## How to Create a New Skill
+For a new skill, copy the one canonical [skill template](docs/contributors/skill-template.md) to `skills/my-skill/SKILL.md`. Replace all placeholders. Read the [quality bar](docs/contributors/quality-bar.md) and [security guardrails](docs/contributors/security-guardrails.md).
 
-### What Makes a Good Skill?
+## Files to include
 
-A skill should:
-- ✅ Solve a specific problem
-- ✅ Be reusable across projects
-- ✅ Have clear instructions
-- ✅ Include examples when possible
+Keep the contribution source-only and focused on `skills/<skill-id>/`. Preserve upstream authorship and notices. Original work uses `source: self` and `source_type: self`; external imports identify `source_repo`, `source_type`, `license` and `license_source`. New external skill additions/copies must declare `license` and an HTTPS `license_source`, and include a nonempty bounded root `LICENSE`; removing an existing root notice is blocked. Existing legacy imports are not forced through a blanket migration for a small edit. A license URL does not replace a required retained notice: include the upstream `LICENSE` and applicable attribution/NOTICE material with the bundle. If the right to redistribute is unclear or no license is present, ask before importing; an absent license is not permission.
 
-### Step-by-Step: Create Your First Skill
+The normal fork intake accepts regular non-executable `SKILL.md` files, supported reference/resource/asset files, and bounded text `skills/<skill-id>/LICENSE` files. Exact supported paths, types and limits are enforced by the current preflight. **Scripts, executable files, symlinks, workflow changes and other restricted files need a maintainer review path.** Describe the complete bundle and its purpose in [Discussions Ideas](https://github.com/sickn33/agentic-awesome-skills/discussions/new?category=ideas) before submitting it. Maintainers decide whether to sponsor a protected owner PR or decline the bundle; the ordinary fork check cannot authorize it. Do not rename scripts as data to bypass intake.
 
-#### Step 1: Choose Your Skill Topic
+Do not edit generated catalogs, plugin mirrors or contributor lists. See `tools/scripts/generated_files.js` for the exact classification; not every file in `data/` is generated. Tracked distribution snapshots refresh in protected release PRs and may intentionally lag source `main`.
 
-Ask yourself:
-- What am I good at?
-- What do I wish my AI assistant knew better?
-- What task do I do repeatedly?
+## Check your contribution
 
-**Examples:**
-- "I'm good at Docker, let me create a Docker skill"
-- "I wish AI understood Tailwind better"
-- "I keep setting up the same testing patterns"
+While editing, use `npm run validate`, `npm run validate:references` and `npm run security:docs` for early feedback. These are repository checks, not proof that the skill works with an agent.
 
-#### Step 2: Create the Folder Structure
+Commit source changes, refresh upstream, and run the complete contribution preflight against that explicit base:
 
 ```bash
-# Navigate to the skills directory
-cd skills/
-
-# Create your skill folder (use lowercase with hyphens)
-mkdir my-awesome-skill
-
-# Create the SKILL.md file
-cd my-awesome-skill
-touch SKILL.md
+git add skills/my-skill/
+git commit -m "feat: add my-skill for a concrete task"
+git fetch upstream main
+npm run pr:preflight -- --contributor --base upstream/main --head HEAD
 ```
 
-#### Step 3: Write Your SKILL.md
+For an existing skill, stage its actual directory and use `fix:` or an appropriate commit subject. Keep unrelated edits out of the commit. The full preflight requires a clean checkout of the selected committed head; commit your corrections and rerun it. It checks the ordinary fork boundary, evaluates changed skill trees without executing their bundled files, and runs the component validation plan in an isolated checkout. Shared, policy and unknown changes receive the full plan.
 
-Every skill should start from the canonical template in [`docs/contributors/skill-template.md`](docs/contributors/skill-template.md).
+For classification only while editing, add `--no-run`. For machine-readable results, add `--json`. **Classification only is not a passing complete preflight.** A local preview cannot grant fork workflow approval, consume maintainer exceptions without a real PR identity, or replace current CI and semantic review. Keep your checkout's tooling current; GitHub uses trusted base policy and may reject an older local preview.
 
-Minimum frontmatter:
+The report separates corrections, evidence to provide and maintainer review. If a check fails, its output identifies the details. Fix author-actionable failures and push the correction. If a restriction requires maintainer action, explain the blocker instead of repeatedly pushing the same files.
 
-```markdown
----
-name: my-awesome-skill
-description: "Brief one-line description of what this skill does"
-risk: safe
-source: community
-date_added: "2026-03-06"
----
+## Required evidence before merge
 
-# Skill Title
+Every PR changing a canonical `skills/<skill-id>/**` tree must fill the default template's three evidence sections: **Change evidence**, **Validation evidence**, and **Source and operational boundaries**. Brief, concrete sentences are sufficient for a typo or small correction. A statement such as “not run because a live deploy publishes an app and spends credits” is valid; bare placeholders, empty comments and unexplained “N/A” are not evidence. The check verifies presence, not truth; reviewers still inspect the claims.
 
-## Overview
+You can open a draft and use CI feedback without installing local tools. Incomplete evidence fails the existing `pr-policy` check before its dependent validation jobs, and `merge:batch` independently checks the current PR description. Fill the sections in GitHub and let checks complete. Description edits rerun CI; unchanged skill content does not trigger another paid semantic review merely because the body was edited. A draft remains unmergeable until its author marks it ready. No paid tool, AI subscription or consequential live test is required to fill the form.
 
-Explain what this skill does and when to use it.
-
-## When to Use This Skill
-
-- Use when [scenario 1]
-- Use when [scenario 2]
-- Use when [scenario 3]
-
-## How It Works
-
-### Step 1: [First Step]
-Explain what to do first...
-
-### Step 2: [Second Step]
-Explain the next step...
-
-### Step 3: [Final Step]
-Explain how to finish...
-
-## Examples
-
-### Example 1: [Common Use Case]
-\`\`\`
-Show example code or commands here
-\`\`\`
-
-### Example 2: [Another Use Case]
-\`\`\`
-More examples...
-\`\`\`
-
-## Best Practices
-
-- ✅ Do this
-- ✅ Also do this
-- ❌ Don't do this
-- ❌ Avoid this
-
-## Common Pitfalls
-
-- **Problem:** Description of common issue
-  **Solution:** How to fix it
-
-## Additional Resources
-
-- [Link to documentation](https://example.com)
-- [Tutorial](https://example.com)
-```
-
-#### Step 4: Test Your Skill
-
-1. **Copy it to your AI tool's skills directory:**
-   ```bash
-   cp -r skills/my-awesome-skill ~/.agents/skills/
-   ```
-
-   Or copy it into the specific tool path you are testing against, such as `~/.claude/skills/`, `~/.cursor/skills/`, or a custom workspace path like `.agent/skills/`.
-
-2. **Try using it:**
-   ```
-   @my-awesome-skill help me with [task]
-   ```
-
-3. **Does it work?** Great! If not, refine it.
-
-#### Step 5: Validate Your Skill
-
-Recommended validation path:
-
-For a **skill-only PR**:
+To check a prepared description locally as part of the same preflight, save it in a gitignored file and add `--body-file`:
 
 ```bash
-npm install
-npm run validate
+npm run pr:preflight -- --contributor --base upstream/main --head HEAD --body-file .tmp/pr-body.md
 ```
 
-GitHub will also run the automated `skill-review` check for PRs that touch `SKILL.md`.
+Without a body file or PR event, local preflight checks content only; admission is still checked on GitHub. Source changes require fresh checks on the new commit. A changed description or draft state stops an active merge attempt and requires fresh admission. CI results from an earlier description cannot waive missing current evidence.
 
-Passing `npm run validate` or `skill-review` is not enough on its own for skill changes. Before you open the PR, manually review the skill for:
+## Describe what you actually tested
 
-- trigger clarity and whether the skill would fire in the right situations,
-- correctness of the instructions and examples,
-- obvious failure modes, unsafe assumptions, and user-facing edge cases,
-- whether the declared `risk:` level still matches the actual behavior.
+Use the default PR template and enable **Allow edits from maintainers** where GitHub supports it. Include:
 
-Submitting `risk: unknown` is still acceptable for genuinely legacy or not-yet-classified content. Maintainers may later use `npm run audit:skills` and `npm run sync:risk-labels` to reconcile high-confidence legacy labels without asking contributors to regenerate catalog artifacts in their PRs.
+- **Change evidence:** the new capability or before/after behavior; for additions, name nearby skills and explain the gap; for upstream updates, pin the full revision and list local differences.
+- **Validation evidence:** commands and outcomes, plus the prompt/input, agent/tool version, expected result and observed result for any practical test. Redact private data. State untested behavior explicitly. Source inspection, an MCP handshake and structural validation are useful but distinct from an end-to-end task.
+- **Source and operational boundaries:** origin, retained license notices, required accounts/connectors, external data sent, writes, known costs/limits, and any affiliation with the service. Mark irrelevant items as not applicable with a short reason.
 
-For **docs / workflows / infra changes**:
+For a typo, a small wording fix or documentation-only change, scale the evidence to the change; do not invent an agent test. Never run a paid, destructive or external write merely to fill the template. Explain what was safely checked and what remains untested.
 
-```bash
-npm install
-npm run validate
-npm run validate:references
-npm test
-```
+CI runs `pr-policy`, `pr-evidence`, `source-validation` and `artifact-preview`, plus applicable review workflows. Read the **Contribution readiness** summary in Actions and the full failing job output. Preview/deployment authorization messages from third-party integrations are separate from skill correctness. A green metadata check does not establish semantic correctness. Tessl `manual-review-required` means a maintainer must review and attest the exact head; it is not a passed automated review.
 
-For **any normal community PR**, keep the branch source-only and leave generated registry artifacts out of the diff. `main` canonicalizes those after merge.
+Maintainers review complete skill trees, safety, correctness, provenance and limitations. Resolve ordinary submission defects before requesting that review. Small maintainer edits remain possible, but a submission needing substantive corrections returns to the author. Accepted PRs use the protected GitHub merge path and preserve attribution; if a policy restriction requires a replacement PR, maintainers explain the relationship and retain contributor credit.
 
-Optional maintainer-style preflight:
+## Issues, questions and proposals
 
-```bash
-npm run pr:preflight
-```
+Use the [issue forms](https://github.com/sickn33/agentic-awesome-skills/issues/new/choose) for reproducible bugs and concrete improvements. Include the affected skill/path, installed version or commit, host/tool, exact input, expected and observed behavior, and a redacted reproduction. A report against an older release should say whether current source was also inspected.
 
-Python-only fallback:
+Use [Discussions](https://github.com/sickn33/agentic-awesome-skills/discussions) for setup questions, early ideas and bundle proposals. Report vulnerabilities through the [security policy](SECURITY.md), without public credentials or exploit details. Be respectful, disclose affiliations, and keep submissions useful to users rather than promotional listings.
 
-```bash
-python3 tools/scripts/validate_skills.py
-```
+## Concrete submission examples
 
-This checks:
-- ✅ SKILL.md exists
-- ✅ Frontmatter is correct
-- ✅ Name matches folder name
-- ✅ Description exists
-- ✅ Reference data and docs bundles stay coherent
-
-Do **not** commit generated registry artifacts in a normal PR. These files are canonicalized on `main` after merge:
-
-- `CATALOG.md`
-- `skills_index.json`
-- `data/skills_index.json`
-- `data/catalog.json`
-- `data/bundles.json`
-- `data/aliases.json`
-
-### Security-Sensitive Review (New Skills)
-
-If your skill contains:
-
-- shell commands or command-like examples (`curl`, `wget`, `bash`, `powershell`, `irm`, etc.),
-- network instructions or credential/token examples,
-- direct file-system, process, or mutation guidance,
-
-add one extra preflight pass:
-
-```bash
-npm run security:docs
-npm test
-```
-
-Expected outcome:
-
-- ✅ no blocked high-risk examples unless justified,
-- ✅ explicit allowlist comments for any deliberate high-risk documentation command patterns
-  (`<!-- security-allowlist: ... -->`),
-- ✅ an explicit note in the PR description if examples are intentionally risky and the intended usage requires local admin/hosted environments.
-
-For offensive or destructive-capability skills, also verify:
-
-- `risk:` is set to `offensive` or `critical` as appropriate,
-- any user confirmation and authorization preconditions are explicit in the instructions,
-- the standard "Authorized Use Only" disclaimer is present in the skill when relevant.
-
-Optional hardening pass:
-
-```bash
-npm run validate:strict
-```
-
-`validate:strict` is useful before larger cleanup PRs, but the repository still contains legacy skills that do not all satisfy the strict quality bar.
-
-#### Step 6: Submit Your Skill
-
-```bash
-# 1. Add your skill
-git add skills/my-awesome-skill/
-
-# 2. Commit with a clear message
-git commit -m "feat: add my-awesome-skill for [purpose]"
-
-# 3. Push to your fork
-git push origin my-branch
-
-# 4. Open a Pull Request on GitHub
-```
-
----
-
-## Skill Template (Copy & Paste)
-
-The canonical template now lives at [`docs/contributors/skill-template.md`](docs/contributors/skill-template.md). You can still use the inline version below as a starting point:
-
-```markdown
----
-name: your-skill-name
-description: "One sentence describing what this skill does and when to use it"
-risk: safe
-source: community
-date_added: "2026-03-06"
----
-
-# Your Skill Name
-
-## Overview
-
-[2-3 sentences explaining what this skill does]
-
-## When to Use This Skill
-
-- Use when you need to [scenario 1]
-- Use when you want to [scenario 2]
-- Use when working with [scenario 3]
-
-## Core Concepts
-
-### Concept 1
-[Explain key concept]
-
-### Concept 2
-[Explain another key concept]
-
-## Step-by-Step Guide
-
-### 1. [First Step Name]
-[Detailed instructions]
-
-### 2. [Second Step Name]
-[Detailed instructions]
-
-### 3. [Third Step Name]
-[Detailed instructions]
-
-## Examples
-
-### Example 1: [Use Case Name]
-\`\`\`language
-// Example code here
-\`\`\`
-
-**Explanation:** [What this example demonstrates]
-
-### Example 2: [Another Use Case]
-\`\`\`language
-// More example code
-\`\`\`
-
-**Explanation:** [What this example demonstrates]
-
-## Best Practices
-
-- ✅ **Do:** [Good practice]
-- ✅ **Do:** [Another good practice]
-- ❌ **Don't:** [What to avoid]
-- ❌ **Don't:** [Another thing to avoid]
-
-## Troubleshooting
-
-### Problem: [Common Issue]
-**Symptoms:** [How you know this is the problem]
-**Solution:** [How to fix it]
-
-### Problem: [Another Issue]
-**Symptoms:** [How you know this is the problem]
-**Solution:** [How to fix it]
-
-## Related Skills
-
-- `@related-skill-1` - [When to use this instead]
-- `@related-skill-2` - [How this complements your skill]
-
-## Additional Resources
-
-- [Official Documentation](https://example.com)
-- [Tutorial](https://example.com)
-- [Community Guide](https://example.com)
-```
-
----
-
-## How to Report Issues
-
-### Found a Bug?
-
-1. **Check existing issues** - Maybe it's already reported
-2. **Open a new issue** with this info:
-   - What skill has the problem?
-   - What AI tool are you using?
-   - What did you expect to happen?
-   - What actually happened?
-   - Steps to reproduce
-
-### Found Something Confusing?
-
-1. **Open an issue** titled: "Documentation unclear: [topic]"
-2. **Explain:**
-   - What part is confusing?
-   - What did you expect to find?
-   - How could it be clearer?
-
----
-
-## Contribution Checklist
-
-Before submitting your contribution:
-
-- [ ] My skill has a clear, descriptive name
-- [ ] The `SKILL.md` has proper frontmatter (`name`, `description`, `risk`, `source`, `date_added`)
-- [ ] I've included examples
-- [ ] I've tested the skill with an AI assistant
-- [ ] I've run `npm run validate`
-- [ ] If I changed `SKILL.md` or risky guidance, I manually reviewed the logic, safety, and likely failure modes instead of relying on automated checks alone
-- [ ] I've run `npm run validate:references` and `npm test` when my change affects docs, workflows, or infrastructure
-- [ ] I ran the docs security scan (`npm run security:docs`) for any skill containing commands, network access, credentials, or destructive guidance
-- [ ] I did **not** include generated registry artifacts (`CATALOG.md`, `skills_index.json`, `data/*.json`) in this PR
-- [ ] My commit message is clear (e.g., "feat: add docker-compose skill")
-- [ ] I enabled **Allow edits from maintainers** on the PR
-- [ ] I've checked for typos and grammar
-
----
-
-## Commit Message Guidelines
-
-Use these prefixes:
-
-- `feat:` - New skill or major feature
-- `docs:` - Documentation improvements
-- `fix:` - Bug fixes
-- `refactor:` - Code improvements without changing functionality
-- `test:` - Adding or updating tests
-- `chore:` - Maintenance tasks
-
-**Examples:**
-```
-feat: add kubernetes-deployment skill
-docs: improve getting started guide
-fix: correct typo in stripe-integration skill
-docs: add examples to react-best-practices
-```
-
----
-
-## Learning Resources
-
-### New to Git/GitHub?
-- [GitHub's Hello World Guide](https://guides.github.com/activities/hello-world/)
-- [Git Basics](https://git-scm.com/book/en/v2/Getting-Started-Git-Basics)
-
-### New to Markdown?
-- [Markdown Guide](https://www.markdownguide.org/basic-syntax/)
-- [GitHub Markdown](https://guides.github.com/features/mastering-markdown/)
-
-### New to Open Source?
-- [First Contributions](https://github.com/firstcontributions/first-contributions)
-- [How to Contribute to Open Source](https://opensource.guide/how-to-contribute/)
-
----
-
-## Need Help?
-
-- **Questions?** Open a [Discussion](https://github.com/sickn33/antigravity-awesome-skills/discussions)
-- **Stuck?** Open an [Issue](https://github.com/sickn33/antigravity-awesome-skills/issues)
-- **Want feedback?** Open a [Draft Pull Request](https://github.com/sickn33/antigravity-awesome-skills/pulls)
-
----
-
-## Recognition
-
-All contributors are recognized in our [Contributors](https://github.com/sickn33/antigravity-awesome-skills/graphs/contributors) page.
-
-We **always merge accepted PRs via GitHub** ("Squash and merge") so your PR shows as **Merged** and you get full credit. We do not close PRs after integrating your work locally. If your PR has merge conflicts, we will resolve them on the branch (or ask you to merge main and push) so we can merge it on GitHub.
-
----
-
-## Code of Conduct
-
-- Be respectful and inclusive
-- Welcome newcomers
-- Focus on constructive feedback
-- Help others learn
-
----
-
-**Thank you for making this project better for everyone!**
-
-Every contribution, no matter how small, makes a difference. Whether you fix a typo, improve a sentence, or create a whole new skill - you're helping thousands of developers!
+See [PR evidence examples](docs/contributors/pr-examples.md) for a new skill, a small correction and an upstream update. They distinguish expected output from real observations and show how to explain an unrun test. Keep one coherent outcome per PR; a necessary multi-file bundle is valid when its dependency and complete contents are explained. Checklist ticks and untouched placeholders do not replace the three evidence sections. The same report shows all intake findings already known at that stage; fix them together before another push.

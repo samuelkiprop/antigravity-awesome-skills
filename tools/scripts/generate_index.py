@@ -831,6 +831,18 @@ def coerce_metadata_text(value):
         return value
     return str(value)
 
+
+def coerce_metadata_list(value):
+    if isinstance(value, set):
+        values = [coerce_metadata_text(item) for item in sorted(value, key=str)]
+    elif isinstance(value, (list, tuple)):
+        values = [coerce_metadata_text(item) for item in value]
+    elif isinstance(value, str):
+        values = value.split(",") if "," in value else value.split()
+    else:
+        return []
+    return list(dict.fromkeys(item.strip() for item in values if item and item.strip()))
+
 def parse_frontmatter(content):
     """
     Parses YAML frontmatter, sanitizing unquoted values containing @.
@@ -870,9 +882,36 @@ def parse_frontmatter(content):
         print(f"⚠️ YAML parsing error: {e}")
         return {}
 
+def load_category_overrides() -> dict[str, str]:
+    """Load maintainer-reviewed category assignments kept outside generated indexes."""
+    root = pathlib.Path(find_repo_root(__file__))
+    overrides_path = root / "data" / "category-overrides.json"
+    if not overrides_path.is_file():
+        return {}
+    try:
+        with overrides_path.open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Invalid category overrides file: {overrides_path}: {exc}") from exc
+    overrides = payload.get("overrides", payload) if isinstance(payload, Mapping) else None
+    if not isinstance(overrides, Mapping):
+        raise ValueError(f"Category overrides must contain an object at {overrides_path}")
+    normalized: dict[str, str] = {}
+    for skill_id, category in overrides.items():
+        if not isinstance(skill_id, str) or not isinstance(category, str):
+            raise ValueError(f"Category overrides must map string IDs to string categories: {skill_id!r}")
+        skill_id = skill_id.strip()
+        category = normalize_category(category)
+        if not skill_id or not category:
+            raise ValueError("Category overrides cannot contain empty IDs or categories")
+        normalized[skill_id] = category
+    return normalized
+
+
 def generate_index(skills_dir, output_file, compatibility_report=None):
     print(f"🏗️ Generating index from: {skills_dir}")
     skills = []
+    category_overrides = load_category_overrides()
     if compatibility_report is None:
         compatibility_report = build_plugin_compatibility_report(pathlib.Path(skills_dir))
     compatibility_lookup = plugin_compatibility_by_path(compatibility_report)
@@ -930,8 +969,17 @@ def generate_index(skills_dir, output_file, compatibility_report=None):
             description = coerce_metadata_text(metadata.get("description"))
             risk = coerce_metadata_text(metadata.get("risk"))
             source = coerce_metadata_text(metadata.get("source"))
+            source_type = coerce_metadata_text(metadata.get("source_type"))
+            source_repo = coerce_metadata_text(metadata.get("source_repo"))
+            license_value = coerce_metadata_text(metadata.get("license"))
+            license_source = coerce_metadata_text(metadata.get("license_source"))
             date_added = coerce_metadata_text(metadata.get("date_added"))
             category = coerce_metadata_text(metadata.get("category"))
+            tags_value = metadata.get("tags")
+            nested_metadata = metadata.get("metadata")
+            if tags_value is None and isinstance(nested_metadata, Mapping):
+                tags_value = nested_metadata.get("tags")
+            tags = coerce_metadata_list(tags_value)
 
             if name is not None:
                 skill_info["name"] = name
@@ -941,8 +989,18 @@ def generate_index(skills_dir, output_file, compatibility_report=None):
                 skill_info["risk"] = risk
             if source is not None:
                 skill_info["source"] = source
+            if source_type is not None:
+                skill_info["source_type"] = source_type
+            if source_repo is not None:
+                skill_info["source_repo"] = source_repo
+            if license_value is not None:
+                skill_info["license"] = license_value
+            if license_source is not None:
+                skill_info["license_source"] = license_source
             if date_added is not None:
                 skill_info["date_added"] = date_added
+            if tags:
+                skill_info["tags"] = tags
             
             # Category: prefer frontmatter, then folder structure, then conservative inference
             if category is not None:
@@ -956,6 +1014,8 @@ def generate_index(skills_dir, output_file, compatibility_report=None):
                 skill_info["category"] = inferred_category or "uncategorized"
             if skill_info["id"] in CURATED_CATEGORY_OVERRIDES:
                 skill_info["category"] = CURATED_CATEGORY_OVERRIDES[skill_info["id"]]
+            if skill_info["id"] in category_overrides:
+                skill_info["category"] = category_overrides[skill_info["id"]]
             skill_info["category"] = normalize_category(skill_info["category"])
 
             plugin_info = compatibility_lookup.get(skill_info["path"])

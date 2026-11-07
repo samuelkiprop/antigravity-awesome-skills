@@ -15,13 +15,12 @@ Substitution points
 
 Prerequisites
 -------------
-    pip install pycarlo pyhive python-dotenv
+    python -m pip install pycarlo==0.15.491 pyhive python-dotenv
 
 Usage
 -----
     python collect_and_push_metadata.py \\
         --key-id  <MCD_INGEST_ID> \\
-        --key-token <MCD_INGEST_TOKEN> \\
         --resource-uuid <MCD_RESOURCE_UUID> \\
         --hive-host <HIVESERVER2_HOSTNAME>
 """
@@ -30,8 +29,9 @@ import argparse
 import json
 import os
 
-from collect_metadata import collect
-from push_metadata import DEFAULT_BATCH_SIZE, DEFAULT_TIMEOUT_SECONDS, push
+from collect_metadata import _bounded_int, collect
+from push_metadata import DEFAULT_BATCH_SIZE, push
+from _safe_paths import safe_existing_directory, safe_input_json_path, safe_output_json_path, write_json_file
 
 
 def main() -> None:
@@ -57,7 +57,7 @@ def main() -> None:
         help="Monte Carlo ingestion key ID (env: MCD_INGEST_ID)",  # ← SUBSTITUTE env var name if different
     )
     parser.add_argument(
-        "--key-token",
+        "--key-token", choices=[],
         default=os.environ.get("MCD_INGEST_TOKEN"),
         help="Monte Carlo ingestion key token (env: MCD_INGEST_TOKEN)",  # ← SUBSTITUTE env var name if different
     )
@@ -79,13 +79,6 @@ def main() -> None:
         metavar="N",
         help=f"Max assets per POST (default: {DEFAULT_BATCH_SIZE})",
     )
-    parser.add_argument(
-        "--timeout",
-        type=int,
-        default=DEFAULT_TIMEOUT_SECONDS,
-        metavar="SEC",
-        help=f"HTTP timeout per request in seconds (default: {DEFAULT_TIMEOUT_SECONDS})",
-    )
     args = parser.parse_args()
 
     if not args.hive_host:
@@ -94,6 +87,8 @@ def main() -> None:
         parser.error("--key-id and --key-token are required (or set MCD_INGEST_ID / MCD_INGEST_TOKEN)")
     if not args.resource_uuid:
         parser.error("--resource-uuid is required (or set MCD_RESOURCE_UUID)")
+
+    args.hive_port = _bounded_int(args.hive_port, "hive_port", minimum=1, maximum=65535)
 
     manifest = collect(
         hive_host=args.hive_host,
@@ -106,11 +101,9 @@ def main() -> None:
         key_id=args.key_id,
         key_token=args.key_token,
         batch_size=args.batch_size,
-        timeout_seconds=args.timeout,
     )
 
-    with open(args.output_file, "w") as fh:
-        json.dump(manifest, fh, indent=2)
+    write_json_file(args.output_file, manifest)
     print(f"Manifest written to {args.output_file}")
     print("Done.")
 

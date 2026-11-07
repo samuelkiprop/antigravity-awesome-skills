@@ -1,7 +1,7 @@
 ---
 name: azure-eventgrid-java
 description: "Build event-driven applications with Azure Event Grid SDK for Java. Use when publishing events, implementing pub/sub patterns, or integrating with Azure services via events."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -9,6 +9,10 @@ date_added: "2026-02-27"
 # Azure Event Grid SDK for Java
 
 Build event-driven applications using the Azure Event Grid SDK for Java.
+
+## Integration boundaries
+
+Use the SDK/reference matching the pinned package; namespace pull examples require the separate namespace client dependency. Authenticate/validate webhook sources, bound payloads and deduplicate event IDs. Acknowledge received events only after durable successful processing; failures must be released/retried or dead-lettered under policy. Publishing can trigger downstream actions/costs, so use an authorized topic and synthetic data. Service size limits vary by feature/tier; consult current quotas rather than assuming the summary below is a complete limit table.
 
 ## Installation
 
@@ -125,8 +129,8 @@ cloudClient.sendEvent(cloudEvent);
 
 ```java
 List<CloudEvent> cloudEvents = Arrays.asList(
-    new CloudEvent("/app", "event.type1", BinaryData.fromString("data1"), CloudEventDataFormat.JSON),
-    new CloudEvent("/app", "event.type2", BinaryData.fromString("data2"), CloudEventDataFormat.JSON)
+    new CloudEvent("/app", "event.type1", BinaryData.fromString("{\"value\":\"data1\"}"), CloudEventDataFormat.JSON),
+    new CloudEvent("/app", "event.type2", BinaryData.fromString("{\"value\":\"data2\"}"), CloudEventDataFormat.JSON)
 );
 
 cloudClient.sendEvents(cloudEvents);
@@ -137,8 +141,9 @@ cloudClient.sendEvents(cloudEvents);
 ```java
 asyncClient.sendEvent(event)
     .subscribe(
-        unused -> System.out.println("Event sent successfully"),
-        error -> System.err.println("Error: " + error.getMessage())
+        unused -> { },
+        error -> System.err.println("Error: " + error.getMessage()),
+        () -> System.out.println("Event sent successfully")
     );
 
 // With multiple events

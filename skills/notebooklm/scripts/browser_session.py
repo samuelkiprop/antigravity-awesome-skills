@@ -17,6 +17,7 @@ from patchright.sync_api import BrowserContext, Page
 sys.path.insert(0, str(Path(__file__).parent))
 
 from browser_utils import StealthUtils
+from input_safety import format_untrusted_content, validate_notebook_url, validate_metadata_text
 
 
 def _get_hostname(url: str) -> str:
@@ -49,7 +50,7 @@ class BrowserSession:
         self.created_at = time.time()
         self.last_activity = time.time()
         self.message_count = 0
-        self.notebook_url = notebook_url
+        self.notebook_url = validate_notebook_url(notebook_url)
         self.context = context
         self.page = None
         self.stealth = StealthUtils()
@@ -108,10 +109,11 @@ class BrowserSession:
             Dict with status, question, answer, session_id
         """
         try:
+            question = validate_metadata_text(question.replace("\r", " ").replace("\n", " "), "question", 10000)
             self.last_activity = time.time()
             self.message_count += 1
 
-            print(f"💬 [{self.id}] Asking: {question}")
+            print(f"💬 [{self.id}] Asking NotebookLM (question omitted from logs)")
 
             # Snapshot current answer to detect new response
             previous_answer = self._snapshot_latest_response()
@@ -149,7 +151,7 @@ class BrowserSession:
             return {
                 "status": "success",
                 "question": question,
-                "answer": answer,
+                "answer": format_untrusted_content(answer),
                 "session_id": self.id,
                 "notebook_url": self.notebook_url
             }
@@ -216,7 +218,7 @@ class BrowserSession:
         raise TimeoutError(f"No response received within {timeout} seconds")
 
     def reset(self):
-        """Reset the chat by reloading the page"""
+        """Reload the page; server-side chat history may remain."""
         print(f"🔄 Resetting session {self.id}...")
 
         self.page.reload(wait_until="domcontentloaded")
@@ -226,7 +228,7 @@ class BrowserSession:
         self.message_count = 0
         self.last_activity = time.time()
 
-        print(f"✅ Session reset (cleared {previous_count} messages)")
+        print(f"✅ Session reloaded (reset local counter of {previous_count} messages)")
         return previous_count
 
     def close(self):

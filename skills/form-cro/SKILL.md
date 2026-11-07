@@ -1,7 +1,7 @@
 ---
 name: form-cro
 description: Optimize any form that is NOT signup or account registration — including lead capture, contact, demo request, application, survey, quote, and checkout forms.
-risk: unknown
+risk: critical
 source: community
 date_added: '2026-02-27'
 ---
@@ -157,13 +157,7 @@ If verdict is **Broken**, stop and recommend structural fixes first.
 
 ### 1. Every Field Has a Cost
 
-Each required field reduces completion.
-
-Rule of thumb:
-
-* 3 fields → baseline
-* 4–6 fields → −10–25%
-* 7+ fields → −25–50%+
+Required fields can create friction, but effect sizes depend on intent, audience and implementation. Measure field-level abandonment and task success; no universal conversion penalty is established by field count.
 
 Fields must **earn their place**.
 
@@ -442,7 +436,15 @@ Do **not** test:
 ## When to Use
 This skill is applicable to execute the workflow or actions described in the overview.
 
+## Example
+
+**User request:**
+
+> Optimize any form that is NOT signup or account registration — including lead capture, contact, demo request, application, survey, quote, and checkout forms.
+
 ## Limitations
 - Use this skill only when the task clearly matches the scope described above.
 - Do not treat the output as a substitute for environment-specific validation, testing, or expert review.
 - Stop and ask for clarification if required inputs, permissions, safety boundaries, or success criteria are missing.
+
+Scores/labels in this review are diagnostic hypotheses, not measured conversion performance or proof a form is broken. Validate recommendations with accessible task tests and a defined outcome/baseline before claiming uplift. Analytics should record field identifiers and error categories without raw values, passwords or sensitive answers; enrichment and third-party tracking need the appropriate privacy scope.

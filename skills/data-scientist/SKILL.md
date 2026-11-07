@@ -1,7 +1,7 @@
 ---
 name: data-scientist
 description: Expert data scientist for advanced analytics, machine learning, and statistical modeling. Handles complex data analysis, predictive modeling, and business intelligence.
-risk: unknown
+risk: critical
 source: community
 date_added: '2026-02-27'
 ---
@@ -174,6 +174,10 @@ Expert data scientist combining strong statistical foundations with modern machi
 - Data ethics, bias detection, and fairness in ML
 - Storytelling techniques for data-driven presentations
 - Current trends in data science and analytics methodologies
+
+## Reproducible analysis procedure
+
+For churn prediction, first define the prediction date, outcome window and unit of analysis. Obtain authorized data and record its origin, date range, exclusions, units and missingness. Split customers/time before fitting preprocessing so future outcomes and repeated entities cannot leak across train and evaluation sets. Compare a simple baseline with the candidate model on an untouched time-appropriate holdout; report prevalence, sample size, calibration and uncertainty alongside business-relevant error costs. For observational campaign data, state confounders and identification assumptions rather than calling correlation causal impact. Preserve code/data versions and seeds, redact personal records and distinguish completed calculations from proposed experiments. Capability lists here do not certify regulatory compliance or production readiness.
 
 ## Response Approach
 1. **Understand business context** and define clear analytical objectives

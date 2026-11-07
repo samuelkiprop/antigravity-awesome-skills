@@ -1,7 +1,7 @@
 ---
 name: azure-ai-projects-ts
 description: "High-level SDK for Azure AI Foundry projects with agents, connections, deployments, and evaluations."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -39,6 +39,10 @@ const client = new AIProjectClient(
   new DefaultAzureCredential()
 );
 ```
+
+## SDK generation and effects
+
+These independent fragments span version-sensitive project/agent APIs. Pin the actual package/API generation and verify available operation groups before use. Confirm tenant/project and budget before agent runs, dataset uploads or tools; code interpreter/MCP can execute code or disclose private data. `getWithCredentials` returns secrets and is not a default discovery operation. Cleanup must target only resources created and owned by this task.
 
 ## Operation Groups
 

@@ -1,7 +1,7 @@
 ---
 name: revops
 description: "Design and improve revenue operations, lead lifecycle rules, scoring, routing, handoffs, and CRM process automation. Use when marketing, sales, and customer success workflows need clearer operational structure."
-risk: unknown
+risk: critical
 source: "https://github.com/coreyhaines31/marketingskills"
 date_added: "2026-03-21"
 metadata:
@@ -34,6 +34,10 @@ Gather this context (ask if not provided):
 Work with whatever the user gives you. If they have a clear problem area, start there. Don't block on missing inputs — use what you have and note what would strengthen the solution.
 
 ---
+
+## Implementation boundaries
+
+Treat all numeric thresholds/benchmarks and platform recipes as illustrative starting points. Validate current product tiers, APIs and field behavior before implementation. Planning does not authorize live CRM mutations, record merges/deletion, outbound messages, enrichment uploads or ad-audience sync. Preserve suppression/opt-out records; unsubscribes are eligibility controls, not merely negative scores. Minimize personal data, scope credentials, preview changes and preserve a rollback/export before bulk work. Calibrate with time-split validation including wins, losses and unconverted leads, avoiding post-outcome features.
 
 ## Core Principles
 
@@ -147,10 +151,7 @@ Define response times and document them:
 
 ### Speed-to-Lead
 
-Response time is the single biggest factor in lead conversion:
-- Contact within **5 minutes** = 21x more likely to qualify (Lead Connect)
-- After **30 minutes**, conversion drops by 10x
-- After **24 hours**, the lead is effectively cold
+Response speed can affect qualification, but its effect depends on channel, intent and business hours. Establish a measured local baseline; do not present historical vendor multipliers as universal conversion guarantees.
 
 Build routing rules that prioritize speed. Alert reps immediately. Escalate if SLA is missed.
 
@@ -289,7 +290,7 @@ Document every exception. Track which non-standard terms get requested most — 
 | CAC | Total sales + marketing spend / new customers | LTV:CAC > 3:1 |
 | LTV:CAC ratio | Customer lifetime value / CAC | 3:1 to 5:1 healthy |
 | Speed-to-lead | Time from form fill to first rep contact | < 5 minutes ideal |
-| Win rate | Closed-won / total opportunities | 20-30% (varies) |
+| Win rate | Closed-won / (closed-won + closed-lost) in a defined cohort | 20-30% (varies) |
 
 ### Dashboard Structure
 

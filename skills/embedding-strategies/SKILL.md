@@ -1,7 +1,7 @@
 ---
 name: embedding-strategies
 description: "Guide to selecting and optimizing embedding models for vector search applications."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -32,6 +32,8 @@ Guide to selecting and optimizing embedding models for vector search application
 - Handling multilingual content
 
 ## Core Concepts
+
+Model table is a historical candidate list, not a current leaderboard. Verify exact model-card token limits, dimensions, license, revision and query/document prefixes before use; count tokens with that model’s tokenizer. Approve private-document transfer/provider cost. Preserve original text and source offsets; stripping symbols can destroy code, monetary signs, equations and identifiers.
 
 ### 1. Embedding Model Comparison
 
@@ -115,9 +117,11 @@ class LocalEmbedder:
     def __init__(
         self,
         model_name: str = "BAAI/bge-large-en-v1.5",
-        device: str = "cuda"
+        device: str = "cpu",
+        query_prefix: str = ""
     ):
         self.model = SentenceTransformer(model_name, device=device)
+        self.query_prefix = query_prefix  # Choose from the selected model card.
 
     def embed(
         self,
@@ -135,11 +139,8 @@ class LocalEmbedder:
         return embeddings
 
     def embed_query(self, query: str) -> np.ndarray:
-        """Embed a query with BGE-style prefix."""
-        # BGE models benefit from query prefix
-        if "bge" in self.model.get_sentence_embedding_dimension():
-            query = f"Represent this sentence for searching relevant passages: {query}"
-        return self.embed([query])[0]
+        """Embed a query with the explicitly configured model prefix."""
+        return self.embed([self.query_prefix + query])[0]
 
     def embed_documents(self, documents: List[str]) -> np.ndarray:
         """Embed documents for indexing."""
@@ -171,8 +172,13 @@ def chunk_by_tokens(
     tokenizer=None
 ) -> List[str]:
     """Chunk text by token count."""
-    import tiktoken
-    tokenizer = tokenizer or tiktoken.get_encoding("cl100k_base")
+    if not isinstance(chunk_size, int) or not isinstance(chunk_overlap, int):
+        raise ValueError("chunk size and overlap must be integers")
+    if chunk_size <= 0 or not 0 <= chunk_overlap < chunk_size:
+        raise ValueError("require chunk_size > 0 and 0 <= overlap < chunk_size")
+    if tokenizer is None:
+        import tiktoken
+        tokenizer = tiktoken.get_encoding("cl100k_base")
 
     tokens = tokenizer.encode(text)
     chunks = []
@@ -183,6 +189,8 @@ def chunk_by_tokens(
         chunk_tokens = tokens[start:end]
         chunk_text = tokenizer.decode(chunk_tokens)
         chunks.append(chunk_text)
+        if end >= len(tokens):
+            break
         start = end - chunk_overlap
 
     return chunks
@@ -193,7 +201,12 @@ def chunk_by_sentences(
     max_chunk_size: int = 1000,
     min_chunk_size: int = 100
 ) -> List[str]:
-    """Chunk text by sentences, respecting size limits."""
+    """Group sentences by approximate character length, not tokenizer length.
+
+    min_chunk_size is not enforced; oversized individual sentences require a
+    second token-bounded splitting pass before embedding. NLTK resources must
+    already be installed; no implicit network download is supplied here.
+    """
     import nltk
     sentences = nltk.sent_tokenize(text)
 
@@ -249,58 +262,28 @@ def recursive_character_splitter(
     chunk_overlap: int = 200,
     separators: List[str] = None
 ) -> List[str]:
-    """LangChain-style recursive splitter."""
-    separators = separators or ["\n\n", "\n", ". ", " ", ""]
+    """Bounded character chunks, preferring a separator inside each window."""
+    if chunk_size <= 0 or not 0 <= chunk_overlap < chunk_size:
+        raise ValueError("require chunk_size > 0 and 0 <= overlap < chunk_size")
+    separators = separators or ["\n\n", "\n", ". ", " "]
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = min(start + chunk_size, len(text))
+        if end < len(text):
+            for separator in separators:
+                if not separator:
+                    continue
+                boundary = text.rfind(separator, start + chunk_overlap + 1, end)
+                if boundary >= 0:
+                    end = boundary + len(separator)
+                    break
+        chunks.append(text[start:end])
+        if end == len(text):
+            break
+        start = end - chunk_overlap
+    return chunks
 
-    def split_text(text: str, separators: List[str]) -> List[str]:
-        if not text:
-            return []
-
-        separator = separators[0]
-        remaining_separators = separators[1:]
-
-        if separator == "":
-            # Character-level split
-            return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size - chunk_overlap)]
-
-        splits = text.split(separator)
-        chunks = []
-        current_chunk = []
-        current_length = 0
-
-        for split in splits:
-            split_length = len(split) + len(separator)
-
-            if current_length + split_length > chunk_size and current_chunk:
-                chunk_text = separator.join(current_chunk)
-
-                # Recursively split if still too large
-                if len(chunk_text) > chunk_size and remaining_separators:
-                    chunks.extend(split_text(chunk_text, remaining_separators))
-                else:
-                    chunks.append(chunk_text)
-
-                # Start new chunk with overlap
-                overlap_splits = []
-                overlap_length = 0
-                for s in reversed(current_chunk):
-                    if overlap_length + len(s) <= chunk_overlap:
-                        overlap_splits.insert(0, s)
-                        overlap_length += len(s)
-                    else:
-                        break
-                current_chunk = overlap_splits
-                current_length = overlap_length
-
-            current_chunk.append(split)
-            current_length += split_length
-
-        if current_chunk:
-            chunks.append(separator.join(current_chunk))
-
-        return chunks
-
-    return split_text(text, separators)
 ```
 
 ### Template 4: Domain-Specific Embedding Pipeline
@@ -325,11 +308,9 @@ class DomainEmbeddingPipeline:
         """Default preprocessing."""
         # Remove excessive whitespace
         text = re.sub(r'\s+', ' ', text)
-        # Remove special characters
-        text = re.sub(r'[^\w\s.,!?-]', '', text)
         return text.strip()
 
-    async def process_documents(
+    def process_documents(
         self,
         documents: List[dict],
         id_field: str = "id",
@@ -381,8 +362,8 @@ class DomainEmbeddingPipeline:
 class CodeEmbeddingPipeline:
     """Specialized pipeline for code embeddings."""
 
-    def __init__(self, model: str = "voyage-code-2"):
-        self.model = model
+    def __init__(self, embed_fn):
+        self.embed_fn = embed_fn  # Supply a reviewed provider-specific embedding adapter.
 
     def chunk_code(self, code: str, language: str) -> List[dict]:
         """Chunk code by functions/classes."""
@@ -391,12 +372,12 @@ class CodeEmbeddingPipeline:
         # Parse with tree-sitter
         # Extract functions, classes, methods
         # Return chunks with context
-        pass
+        raise NotImplementedError("Supply the installed parser and language grammar")
 
     def embed_with_context(self, chunk: str, context: str) -> List[float]:
         """Embed code with surrounding context."""
         combined = f"Context: {context}\n\nCode:\n{chunk}"
-        return get_embedding(combined, model=self.model)
+        return self.embed_fn(combined)
 ```
 
 ### Template 5: Embedding Quality Evaluation
@@ -437,6 +418,10 @@ def evaluate_retrieval_quality(
         ideal_dcg = sum(1 / np.log2(i + 2) for i in range(min(len(relevant), k)))
         return dcg / ideal_dcg if ideal_dcg > 0 else 0
 
+    if k <= 0 or not queries or len(queries) != len(relevant_docs) or len(queries) != len(retrieved_docs):
+        raise ValueError("Require positive k and equal nonempty query/relevance/result lists")
+    if any(len(ids) != len(set(ids)) for ids in retrieved_docs):
+        raise ValueError("Deduplicate retrieved IDs before ranking metrics")
     metrics = {
         f"precision@{k}": [],
         f"recall@{k}": [],
@@ -462,14 +447,19 @@ def compute_embedding_similarity(
     """Compute similarity matrix between embedding sets."""
     if metric == "cosine":
         # Normalize
-        norm1 = embeddings1 / np.linalg.norm(embeddings1, axis=1, keepdims=True)
-        norm2 = embeddings2 / np.linalg.norm(embeddings2, axis=1, keepdims=True)
+        lengths1 = np.linalg.norm(embeddings1, axis=1, keepdims=True)
+        lengths2 = np.linalg.norm(embeddings2, axis=1, keepdims=True)
+        if np.any(lengths1 == 0) or np.any(lengths2 == 0):
+            raise ValueError("Cosine similarity is undefined for zero vectors")
+        norm1 = embeddings1 / lengths1
+        norm2 = embeddings2 / lengths2
         return norm1 @ norm2.T
     elif metric == "euclidean":
         from scipy.spatial.distance import cdist
         return -cdist(embeddings1, embeddings2, metric='euclidean')
     elif metric == "dot":
         return embeddings1 @ embeddings2.T
+    raise ValueError(f"Unsupported metric: {metric}")
 ```
 
 ## Best Practices

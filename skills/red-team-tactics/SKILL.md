@@ -6,6 +6,20 @@ source: community
 date_added: "2026-02-27"
 ---
 
+> **⚠️ AUTHORIZED USE ONLY**
+> This skill is for educational purposes or authorized security assessments only.
+> You must have explicit, written permission from the system owner before using this tool.
+> Misuse of this tool is illegal and strictly prohibited.
+
+> **Mandatory confirmation gate**
+> Before running any command that probes, exploits, changes, persists on, extracts data from, or attempts credential access against a target:
+> 1. Ask the user to state the exact target URL, IP, account, or resource.
+> 2. Ask the user to confirm written authorization and the permitted scope.
+> 3. Show the exact command(s) and explain their expected effect.
+> 4. Wait for explicit confirmation in the current conversation.
+>
+> Without that confirmation, remain read-only and provide defensive guidance only. Prefer a sandbox, disposable VM, or controlled lab.
+
 > AUTHORIZED USE ONLY: Use this skill only for authorized security assessments, defensive validation, or controlled educational environments.
 
 # Red Team Tactics
@@ -14,9 +28,9 @@ date_added: "2026-02-27"
 
 ---
 
-## 1. MITRE ATT&CK Phases
+## 1. ATT&CK-aligned tactic overview
 
-### Attack Lifecycle
+### Illustrative assessment flow (not a mandatory ordered ATT&CK lifecycle)
 
 ```
 RECONNAISSANCE → INITIAL ACCESS → EXECUTION → PERSISTENCE
@@ -99,6 +113,8 @@ LATERAL MOVEMENT → COLLECTION → C2 → EXFILTRATION → IMPACT
 | Cron jobs | Writable scripts |
 
 ---
+
+Persistence, credential access, lateral movement, phishing and exfiltration need technique-specific written scope and owned synthetic targets/data. Retain defender evidence: never clear real security logs or hide activity outside the agreed exercise. Define cleanup and incident stop/notification paths before any active action; a framework category does not authorize an attack.
 
 ## 5. Defense Evasion Principles
 

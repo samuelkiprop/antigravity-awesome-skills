@@ -63,24 +63,30 @@ export const RootNavigator = () => {
 
 ```typescript
 // Client state — Zustand
+// Do not persist bearer or refresh tokens in AsyncStorage/plain MMKV.
+// Store secrets with a platform-backed module such as react-native-keychain
+// or expo-secure-store, and persist only non-sensitive UI state here.
 interface AuthState {
-  token: string | null;
   isLoggedIn: boolean;
-  setToken: (token: string) => void;
+  setLoggedIn: (value: boolean) => void;
   logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      token: null,
       isLoggedIn: false,
-      setToken: (token) => set({ token, isLoggedIn: true }),
-      logout: () => set({ token: null, isLoggedIn: false }),
+      setLoggedIn: (value) => set({ isLoggedIn: value }),
+      logout: () => set({ isLoggedIn: false }),
     }),
-    { name: 'auth-storage', storage: createJSONStorage(() => mmkvStorage) }
+    { name: 'auth-ui-storage', storage: createJSONStorage(() => mmkvStorage) }
   )
 );
+
+// Keep tokens outside persisted app state.
+const getSecureToken = () => Keychain.getGenericPassword().then((r) => (r ? r.password : null));
+const saveSecureToken = (token: string) => Keychain.setGenericPassword('auth', token);
+const clearSecureToken = () => Keychain.resetGenericPassword();
 
 // Server state — React Query
 export const useItems = () =>
@@ -139,8 +145,8 @@ const apiClient = axios.create({
 });
 
 // Auth token injection
-apiClient.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
+apiClient.interceptors.request.use(async (config) => {
+  const token = await getSecureToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -149,12 +155,17 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
-    if (error.response?.status === 401) {
+    const request = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+    if (error.response?.status === 401 && request && !request._retry) {
+      request._retry = true; // Retry at most once; refreshToken uses a separate client.
       const newToken = await refreshToken();
       if (newToken) {
-        useAuthStore.getState().setToken(newToken);
-        return apiClient(error.config!);
+        await saveSecureToken(newToken);
+        useAuthStore.getState().setLoggedIn(true);
+        request.headers.Authorization = `Bearer ${newToken}`;
+        return apiClient(request);
       }
+      await clearSecureToken();
       useAuthStore.getState().logout();
     }
     return Promise.reject(error);
@@ -181,6 +192,10 @@ const getItems = async (): Promise<Item[]> => {
 };
 ```
 
+The interceptor example requires Axios's `InternalAxiosRequestConfig` type and
+a separate refresh client to avoid recursive refresh. Coordinate concurrent
+401s with a single refresh operation; clear cached private queries on logout.
+
 ## Key Dependencies
 
 ```json
@@ -193,6 +208,7 @@ const getItems = async (): Promise<Item[]> => {
     "zustand": "^4.5.4",
     "axios": "^1.7.2",
     "zod": "^3.23.8",
+    "react-native-keychain": "^8.2.0",
     "react-native-mmkv": "^2.12.2",
     "react-native-safe-area-context": "^4.10.1",
     "react-native-screens": "^3.32.0"
@@ -230,7 +246,7 @@ describe('HomeScreen', () => {
       )
     );
 
-    const { getByText } = render(
+    const { findByText } = render(
       <QueryClientProvider client={testQueryClient}>
         <HomeScreen navigation={mockNavigation} route={mockRoute} />
       </QueryClientProvider>

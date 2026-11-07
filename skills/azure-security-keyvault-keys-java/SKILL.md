@@ -1,7 +1,7 @@
 ---
 name: azure-security-keyvault-keys-java
 description: "Azure Key Vault Keys Java SDK for cryptographic key management. Use when creating, managing, or using RSA/EC keys, performing encrypt/decrypt/sign/verify operations, or working with HSM-backed keys."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -179,15 +179,17 @@ System.out.println("Deleted: " + deletedKey.getDeletedOn());
 
 deletePoller.waitForCompletion();
 
-// Purge deleted key (permanent deletion)
-keyClient.purgeDeletedKey("my-key");
+// Recovery is an ALTERNATIVE to purge: a purged key cannot be recovered.
+// Purge requires separate explicit authorization and may be blocked by purge protection.
 
-// Recover deleted key
+// Recover the soft-deleted key
 SyncPoller<KeyVaultKey, Void> recoverPoller = keyClient.beginRecoverDeletedKey("my-key");
 recoverPoller.waitForCompletion();
 ```
 
 ## Cryptographic Operations
+
+Confirm vault/tenant, key operations and resource authorization first. Destructive disable/delete/purge operations can make dependent data unavailable; inventory consumers and recovery before writes. Use the returned versioned key ID with ciphertext/signatures for future decryption/verification after rotation. Never log decrypted production plaintext or imported private components. Backup blobs are sensitive encrypted material with restore restrictions, not a general export: write them to approved private storage without overwriting existing backups. Pin Java SDK versions and verify method support for the chosen vault/HSM and algorithm.
 
 ### Encrypt/Decrypt
 

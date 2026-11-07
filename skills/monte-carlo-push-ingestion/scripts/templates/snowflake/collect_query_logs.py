@@ -25,7 +25,6 @@ Usage
     python collect_query_logs.py \\
         --account  <SNOWFLAKE_ACCOUNT> \\
         --user     <SNOWFLAKE_USER> \\
-        --password <SNOWFLAKE_PASSWORD> \\
         --warehouse <SNOWFLAKE_WAREHOUSE>
 """
 
@@ -35,6 +34,7 @@ import os
 from datetime import datetime, timezone
 
 import snowflake.connector
+from _safe_paths import safe_existing_directory, safe_input_json_path, safe_output_json_path, write_json_file
 
 # ← SUBSTITUTE: set LOG_TYPE to match your warehouse type (query logs use log_type, not resource_type)
 LOG_TYPE = "snowflake"
@@ -113,6 +113,8 @@ def _fetch_query_history(conn) -> list[dict]:
         if not chunk:
             break
         rows.extend(dict(zip(columns, row)) for row in chunk)
+        if len(rows) > 100000:
+            raise ValueError("Collection exceeds 100000 rows; narrow scope instead of returning partial success")
     cursor.close()
     return rows
 
@@ -162,8 +164,7 @@ def collect(
             "window_end": None,
             "queries": [],
         }
-        with open(output_file, "w") as fh:
-            json.dump(manifest, fh, indent=2, default=str)
+        write_json_file(output_file, manifest, default=str)
         return manifest
 
     start_times = [r["START_TIME"] for r in rows if r.get("START_TIME") is not None]
@@ -189,8 +190,7 @@ def collect(
             for r in rows
         ],
     }
-    with open(output_file, "w") as fh:
-        json.dump(manifest, fh, indent=2, default=str)
+    write_json_file(output_file, manifest, default=str)
     print(f"Query log manifest written to {output_file}")
 
     return manifest
@@ -211,7 +211,7 @@ def main() -> None:
         help="Snowflake username (env: SNOWFLAKE_USER)",
     )
     parser.add_argument(
-        "--password",
+        "--password", choices=[],
         default=os.environ.get("SNOWFLAKE_PASSWORD"),
         help="Snowflake password (env: SNOWFLAKE_PASSWORD)",
     )

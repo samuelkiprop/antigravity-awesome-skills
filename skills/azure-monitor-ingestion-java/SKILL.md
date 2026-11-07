@@ -1,7 +1,7 @@
 ---
 name: azure-monitor-ingestion-java
 description: Azure Monitor Ingestion SDK for Java. Send custom logs to Azure Monitor via Data Collection Rules (DCR) and Data Collection Endpoints (DCE).
-risk: unknown
+risk: critical
 source: community
 date_added: '2026-02-27'
 ---
@@ -236,3 +236,5 @@ This skill is applicable to execute the workflow or actions described in the ove
 - Use this skill only when the task clearly matches the scope described above.
 - Do not treat the output as a substitute for environment-specific validation, testing, or expert review.
 - Stop and ask for clarification if required inputs, permissions, safety boundaries, or success criteria are missing.
+
+Serialize record property names, timestamp formats and values to the exact Data Collection Rule stream schema; a POJO timestamp or console log does not prove ingestion. Await async completion with error handling and check the target workspace separately before declaring success. Use an authorized test stream, bound batch volume and avoid logging private records.

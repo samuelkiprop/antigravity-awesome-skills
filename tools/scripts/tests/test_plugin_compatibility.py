@@ -62,6 +62,30 @@ class PluginCompatibilityTests(unittest.TestCase):
             self.assertEqual(entry["targets"]["claude"], "supported")
             self.assertIn("target_specific_home_path", entry["blocked_reasons"]["codex"])
 
+    def test_referenced_markdown_preserves_portability_findings(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            skills_dir = pathlib.Path(temp_dir) / "skills"
+            skill_dir = self._write_skill(
+                skills_dir,
+                "modular-skill",
+                (
+                    "---\nname: modular-skill\ndescription: Example\n---\n"
+                    "Read [the detailed guide](references/detailed-guide.md).\n"
+                ),
+            )
+            references = skill_dir / "references"
+            references.mkdir()
+            (references / "detailed-guide.md").write_text(
+                "Use /Users/tester/private/file and ~/.claude/projects/cache.\n",
+                encoding="utf-8",
+            )
+
+            entry = plugin_compatibility.build_report(skills_dir)["skills"][0]
+            self.assertEqual(entry["targets"]["codex"], "blocked")
+            self.assertEqual(entry["targets"]["claude"], "blocked")
+            self.assertIn("absolute_host_path", entry["reasons"])
+            self.assertIn("target_specific_home_path", entry["blocked_reasons"]["codex"])
+
     def test_runtime_dependency_requires_explicit_manual_setup(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             skills_dir = pathlib.Path(temp_dir) / "skills"
@@ -155,14 +179,44 @@ class PluginCompatibilityTests(unittest.TestCase):
             self.assertIn("explicit_target_restriction", entry["blocked_reasons"]["codex"])
             self.assertIn("explicit_target_restriction", entry["blocked_reasons"]["claude"])
 
+    def test_explicit_supported_target_overrides_alternative_home_path(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            skills_dir = pathlib.Path(temp_dir) / "skills"
+            self._write_skill(
+                skills_dir,
+                "portable-skill",
+                (
+                    "---\n"
+                    "name: portable-skill\n"
+                    "description: Example\n"
+                    "plugin:\n"
+                    "  targets:\n"
+                    "    codex: supported\n"
+                    "---\n"
+                    "Use ~/.claude for Claude or ~/.codex for Codex.\n"
+                ),
+            )
+
+            report = plugin_compatibility.build_report(skills_dir)
+            entry = report["skills"][0]
+            self.assertEqual(entry["targets"]["codex"], "supported")
+            self.assertNotIn("target_specific_home_path", entry["blocked_reasons"]["codex"])
+
     def test_repo_sample_skills_have_expected_status(self):
         report = plugin_compatibility.build_report(REPO_ROOT / "skills")
         entries = plugin_compatibility.compatibility_by_skill_id(report)
 
-        for skill_id in ("molykit", "claude-code-expert"):
+        for skill_id in ("molykit",):
             self.assertEqual(entries[skill_id]["targets"]["codex"], "blocked")
             self.assertEqual(entries[skill_id]["targets"]["claude"], "blocked")
             self.assertIn("absolute_host_path", entries[skill_id]["reasons"])
+
+        # The reviewed guide now has only Claude home paths, not another host's absolute paths.
+        self.assertEqual(entries["claude-code-expert"]["targets"]["codex"], "blocked")
+        self.assertEqual(entries["claude-code-expert"]["targets"]["claude"], "supported")
+        self.assertNotIn("absolute_host_path", entries["claude-code-expert"]["reasons"])
+        self.assertEqual(entries["claude-code-expert"]["blocked_reasons"]["claude"], [])
+        self.assertIn("target_specific_home_path", entries["claude-code-expert"]["blocked_reasons"]["codex"])
 
         self.assertEqual(entries["project-skill-audit"]["targets"]["codex"], "supported")
         self.assertEqual(entries["project-skill-audit"]["targets"]["claude"], "blocked")

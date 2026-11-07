@@ -6,7 +6,7 @@ const { findProjectRoot } = require("../../lib/project-root");
 const projectRoot = findProjectRoot(__dirname);
 const candidatesPath = path.join(projectRoot, "data", "specialized-plugin-candidates.json");
 const bundlesPath = path.join(projectRoot, "data", "editorial-bundles.json");
-const skillsIndexPath = path.join(projectRoot, "data", "skills_index.json");
+const skillsIndexPath = path.join(projectRoot, "skills_index.json");
 const codexMarketplacePath = path.join(projectRoot, ".agents", "plugins", "marketplace.json");
 const claudeMarketplacePath = path.join(projectRoot, ".claude-plugin", "marketplace.json");
 
@@ -23,25 +23,40 @@ const claudePluginNames = new Set(claudeMarketplace.plugins.map((plugin) => plug
 
 assert.ok(candidates.length >= 10, "specialized plugin candidates should include a meaningful shortlist");
 
+function assertFocusedMembership(candidate) {
+  assert.ok(Array.isArray(candidate.skills), "candidate skills must be an array");
+  assert.ok(candidate.skills.length >= 5 && candidate.skills.length <= 20,
+    `candidate ${candidate.id} should stay within the focused 5-20 skill range`);
+  assert.strictEqual(new Set(candidate.skills).size, candidate.skills.length,
+    `candidate ${candidate.id} must not repeat skill IDs`);
+}
+// Expansion is bounded and never permits duplicate filler.
+for (const size of [4, 21]) {
+  assert.throws(() => assertFocusedMembership({ id: "fixture", skills: Array.from({length: size}, (_, i) => `skill-${i}`) }));
+}
+assert.throws(() => assertFocusedMembership({ id: "fixture", skills: ["a", "b", "c", "d", "a"] }));
+assertFocusedMembership({ id: "fixture", skills: Array.from({length: 20}, (_, i) => `skill-${i}`) });
 for (const candidate of candidates) {
   assert.match(candidate.id, /^[a-z0-9]+(?:-[a-z0-9]+)*$/, `candidate ${candidate.id} should use a host-neutral id convention`);
   assert.ok(!candidate.id.startsWith("codex-"), `candidate ${candidate.id} should not brand the plugin name around Codex`);
   assert.ok(!/^Codex\b/.test(candidate.name), `candidate ${candidate.id} display name should not start with Codex`);
-  assert.ok(
-    candidate.skills.length >= 5 && candidate.skills.length <= 10,
-    `candidate ${candidate.id} should stay within the focused 5-10 skill range`,
-  );
+  assertFocusedMembership(candidate);
 
   const bundle = bundlesById.get(candidate.id);
   assert.ok(bundle, `candidate ${candidate.id} must be enabled in data/editorial-bundles.json`);
   assert.strictEqual(bundle.name, candidate.name, `candidate ${candidate.id} bundle name should match`);
+  assert.strictEqual(bundle.why, candidate.why, `candidate ${candidate.id} should carry candidate rationale into bundles`);
+  assert.ok(
+    Array.isArray(bundle.defaultPrompts) && bundle.defaultPrompts.length >= 2,
+    `candidate ${candidate.id} should include productized default prompts`,
+  );
   assert.deepStrictEqual(
     bundle.skills.map((skill) => skill.id),
     candidate.skills,
     `candidate ${candidate.id} bundle skills should match the candidate manifest`,
   );
 
-  const pluginRoot = path.join(projectRoot, "plugins", `antigravity-bundle-${candidate.id}`);
+  const pluginRoot = path.join(projectRoot, "plugins", `agentic-bundle-${candidate.id}`);
   assert.ok(fs.existsSync(pluginRoot), `candidate ${candidate.id} plugin directory should exist`);
   assert.ok(
     fs.existsSync(path.join(pluginRoot, ".codex-plugin", "plugin.json")),
@@ -52,11 +67,15 @@ for (const candidate of candidates) {
     `candidate ${candidate.id} should have a Claude plugin manifest`,
   );
   assert.ok(
-    codexPluginNames.has(`agyb-${candidate.id}`),
+    fs.existsSync(path.join(pluginRoot, "plugin.json")),
+    `candidate ${candidate.id} should have an Agent Plugins manifest`,
+  );
+  assert.ok(
+    codexPluginNames.has(`aasb-${candidate.id}`),
     `candidate ${candidate.id} should be listed in the Codex marketplace`,
   );
   assert.ok(
-    claudePluginNames.has(`antigravity-bundle-${candidate.id}`),
+    claudePluginNames.has(`agentic-bundle-${candidate.id}`),
     `candidate ${candidate.id} should be listed in the Claude marketplace`,
   );
 
@@ -73,3 +92,16 @@ for (const candidate of candidates) {
 }
 
 console.log("ok");
+
+// Retired packs must not survive as duplicate installable listings or payloads.
+const migrations = JSON.parse(fs.readFileSync(bundlesPath, "utf8")).migrations || [];
+for (const migration of migrations) {
+  assert.ok(!bundlesById.has(migration.from), `${migration.from} must be retired`);
+  assert.ok(!codexPluginNames.has(`aasb-${migration.from}`));
+  assert.ok(!claudePluginNames.has(`agentic-bundle-${migration.from}`));
+  assert.ok(!fs.existsSync(path.join(projectRoot, "plugins", `agentic-bundle-${migration.from}`)));
+  const target = bundlesById.get(migration.to);
+  assert.ok(target);
+  const targetSkills = new Set(target.skills.map((skill) => skill.id));
+  for (const id of migration.preservedSkills) assert.ok(targetSkills.has(id), `${migration.from} lost ${id}`);
+}

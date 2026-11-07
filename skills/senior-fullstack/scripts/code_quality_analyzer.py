@@ -9,13 +9,26 @@ import sys
 import json
 import argparse
 from pathlib import Path
+
+
+def safe_user_path(path_value, base_dir="."):
+    """Resolve a CLI path under the current workspace."""
+    if base_dir != ".":
+        raise ValueError("Custom base directories are not supported for CLI paths")
+    base_path = Path.cwd().resolve()
+    resolved_path = Path(path_value).expanduser().resolve()
+    try:
+        resolved_path.relative_to(base_path)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes allowed directory: {path_value}") from exc
+    return resolved_path
 from typing import Dict, List, Optional
 
 class CodeQualityAnalyzer:
     """Main class for code quality analyzer functionality"""
     
     def __init__(self, target_path: str, verbose: bool = False):
-        self.target_path = Path(target_path)
+        self.target_path = safe_user_path(target_path)
         self.verbose = verbose
         self.results = {}
     
@@ -45,19 +58,11 @@ class CodeQualityAnalyzer:
             print(f"✓ Target validated: {self.target_path}")
     
     def analyze(self):
-        """Perform the main analysis or operation"""
-        if self.verbose:
-            print("📊 Analyzing...")
-        
-        # Main logic here
-        self.results['status'] = 'success'
-        self.results['target'] = str(self.target_path)
-        self.results['findings'] = []
-        
-        # Add analysis results
-        if self.verbose:
-            print(f"✓ Analysis complete: {len(self.results.get('findings', []))} findings")
-    
+        """Fail closed: this historical helper has no implementation."""
+        raise NotImplementedError(
+            "This helper is an unimplemented skeleton; use the project's real tools."
+        )
+
     def generate_report(self):
         """Generate and display the report"""
         print("\n" + "="*50)
@@ -104,7 +109,7 @@ def main():
     if args.json:
         output = json.dumps(results, indent=2)
         if args.output:
-            with open(args.output, 'w') as f:
+            with safe_user_path(args.output).open('w') as f:
                 f.write(output)
             print(f"Results written to {args.output}")
         else:

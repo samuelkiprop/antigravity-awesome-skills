@@ -1,11 +1,25 @@
 ---
 name: broken-authentication
 description: "Identify and exploit authentication and session management vulnerabilities in web applications. Broken authentication consistently ranks in the OWASP Top 10 and can lead to account takeover, identity theft, and unauthorized access to sensitive systems."
-risk: unknown
+risk: offensive
 source: community
 author: zebbern
 date_added: "2026-02-27"
 ---
+
+> **⚠️ AUTHORIZED USE ONLY**
+> This skill is for educational purposes or authorized security assessments only.
+> You must have explicit, written permission from the system owner before using this tool.
+> Misuse of this tool is illegal and strictly prohibited.
+
+> **Mandatory confirmation gate**
+> Before running any command that probes, exploits, changes, persists on, extracts data from, or attempts credential access against a target:
+> 1. Ask the user to state the exact target URL, IP, account, or resource.
+> 2. Ask the user to confirm written authorization and the permitted scope.
+> 3. Show the exact command(s) and explain their expected effect.
+> 4. Wait for explicit confirmation in the current conversation.
+>
+> Without that confirmation, remain read-only and provide defensive guidance only. Prefer a sandbox, disposable VM, or controlled lab.
 
 # Broken Authentication Testing
 
@@ -64,7 +78,7 @@ Capture and analyze authentication requests:
 
 ```http
 POST /login HTTP/1.1
-Host: target.com
+Host: target.invalid
 Content-Type: application/x-www-form-urlencoded
 
 username=test&password=test123
@@ -81,7 +95,7 @@ Evaluate password requirements and enforcement:
 # Test username as password (admin/admin, test/test)
 ```
 
-Document policy gaps: Minimum length <8, no complexity, common passwords allowed, username as password.
+Assess the applicable policy and threat model. Lack of character-composition rules is not itself a defect; prioritize length, compromised-password blocklists and rate limits. See [NIST SP800-63B-4](https://pages.nist.gov/800-63-4/sp800-63b.html).
 
 ### Phase 3: Credential Enumeration
 
@@ -109,7 +123,7 @@ Test account lockout and rate limiting:
 ```bash
 # Using Hydra for form-based auth
 hydra -l admin -P /usr/share/wordlists/rockyou.txt \
-  target.com http-post-form \
+  target.invalid http-post-form \
   "/login:username=^USER^&password=^PASS^:Invalid credentials"
 
 # Using Burp Intruder
@@ -141,7 +155,7 @@ Check for protections:
 
 ### Phase 5: Credential Stuffing
 
-Test with known breached credentials:
+Use synthetic paired credentials for explicitly authorized test accounts, never unrelated breached accounts:
 
 ```bash
 # Credential stuffing differs from brute force
@@ -185,7 +199,7 @@ import hashlib
 # Collect multiple session tokens
 tokens = []
 for i in range(100):
-    response = requests.get("https://target.com/login")
+    response = requests.get("https://target.invalid/login")
     token = response.cookies.get("SESSIONID")
     tokens.append(token)
 
@@ -210,8 +224,8 @@ Cookie: SESSIONID=abc123
 username=valid&password=valid
 
 # Step 3: Check if session changed
-# VULNERABLE if SESSIONID remains abc123
-# SECURE if new session assigned after login
+# Unchanged ID is a lead: verify attacker fixation and authenticated reuse.
+# A changed ID alone does not prove the old session was invalidated.
 ```
 
 Attack scenario:
@@ -220,7 +234,7 @@ Attack scenario:
 # Attacker workflow:
 1. Attacker visits site, gets session: SESSIONID=attacker_session
 2. Attacker sends link to victim with fixed session:
-   https://target.com/login?SESSIONID=attacker_session
+   https://target.invalid/login?SESSIONID=attacker_session
 3. Victim logs in with attacker's session
 4. Attacker now has authenticated session
 ```
@@ -304,7 +318,7 @@ Analyze password reset security:
    - Account binding
 
 # Token manipulation
-https://target.com/reset?token=abc123&user=victim
+https://target.invalid/reset?token=abc123&user=victim
 # Try changing user parameter while using valid token
 
 # Host header injection
@@ -455,7 +469,7 @@ POST /forgot-password
 email=test@example.com
 
 # Step 2: Capture reset link
-https://target.com/reset?token=a1b2c3d4e5f6
+https://target.invalid/reset?token=a1b2c3d4e5f6
 
 # Step 3: Test token properties
 # Reuse: Try using same token twice
@@ -463,7 +477,7 @@ https://target.com/reset?token=a1b2c3d4e5f6
 # Modification: Change characters in token
 
 # Step 4: Test for user parameter manipulation
-https://target.com/reset?token=a1b2c3d4e5f6&email=admin@example.com
+https://target.invalid/reset?token=a1b2c3d4e5f6&email=admin@example.com
 # Check if admin's password can be reset with test user's token
 ```
 
@@ -473,8 +487,10 @@ https://target.com/reset?token=a1b2c3d4e5f6&email=admin@example.com
 |-------|-----------|
 | Brute force too slow | Identify rate limit scope; IP rotation; add delays; use targeted wordlists |
 | Session analysis inconclusive | Collect 1000+ tokens; use statistical tools; check for timestamps; compare accounts |
-| MFA cannot be bypassed | Document as secure; test backup/recovery mechanisms; check MFA fatigue; verify enrollment |
+| MFA cannot be bypassed | Report no bypass found within tested scope; test backup/recovery mechanisms; check MFA fatigue; verify enrollment |
 | Account lockout prevents testing | Request multiple test accounts; test threshold first; use slower timing |
 
 ## When to Use
 This skill is applicable to execute the workflow or actions described in the overview.
+
+Agree test account IDs, maximum attempts/rate/concurrency, lockout recovery and stop conditions before credential/OTP tests. Do not continue until success or rotate IPs merely to evade a test budget. Missing lockout alone is not a vulnerability when effective throttling/other controls apply. Token length and small samples do not establish entropy; report only observed properties. Mutating a client response proves a bypass only if server-side protected actions succeed. Cookie Path is not a robust security boundary; absent Expires normally means a session cookie, not perpetual server authorization. Pwned Passwords is not a source of paired breached account credentials.

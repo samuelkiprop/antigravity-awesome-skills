@@ -2,7 +2,7 @@
 name: daily-gift
 description: "Relationship-aware daily gift engine with five-stage creative pipeline — editorial judgment, synthesis, concept generation, visual strategy, and rendering in H5, image, or video"
 category: productivity
-risk: unknown
+risk: critical
 source: community
 source_repo: openclaw/skills
 source_type: community
@@ -28,6 +28,8 @@ Published on ClawHub: https://clawhub.ai/jiawei248/daily-gift
 - Use when a milestone, anniversary, or emotionally meaningful moment should be marked with a creative artifact
 - Use when the user manually requests a visual gift from a quote, poem, or creative brief
 - Use when you want a daily cron-triggered creative output that avoids repetition and template fatigue
+
+This catalog copy contains no scripts, creative-seed library, templates or provider runtime. The named counts/quality floors describe upstream materials, not inspected bundled assets. Use the inline concept workflow independently; missing runtime means no rendering/cron capability is established. A manual gift request does not authorize recurring jobs, memory/profile writes, external delivery or broad conversation-history reads. Use only approved context, store scoped personal data with a clear deletion path, and obtain destination/payload/cost consent before hosted generation. Never silently change provider through a fallback chain.
 
 ## How It Works
 
@@ -74,6 +76,12 @@ Produce the final artifact. H5 gifts use p5.js/canvas with a quality floor set b
 - ❌ Don't default to "reflect on today" every time — vary content direction
 - ❌ Don't choose the format before locking the concept
 
+## Example
+
+**User request:**
+
+> Decide whether today merits a personalized gift, then create the most fitting concept and output for the recipient.
+
 ## Limitations
 
 - Requires API keys for image/video generation (optional — H5 works without them)
@@ -83,9 +91,9 @@ Produce the final artifact. H5 gifts use p5.js/canvas with a quality floor set b
 
 ## Security & Safety Notes
 
-- The skill creates a recurring cron job for daily gift delivery. Review and approve the cron setup step.
+- Create a recurring job only on an explicit user scheduling request; preserve cadence/timezone, quiet-skip behavior and disable path.
 - Shell scripts in `scripts/` call external APIs (image generation, video generation, asset hosting). Supply API keys only after reviewing which scripts use them.
-- User taste data and gift history are stored locally in `workspace/daily-gift/`. No data is sent to external services beyond the configured rendering APIs.
+- User taste data and gift history are stored locally in `workspace/daily-gift/`. Inspect actual runtime/network behavior; this single-file entry cannot guarantee which data is transmitted.
 - The skill reads conversation context and memory files to inform editorial judgment — this is core to personalization but means it has broad read access within the agent's workspace.
 
 ## Related Skills

@@ -1,7 +1,7 @@
 ---
 name: design-orchestration
 description: Orchestrates design workflows by routing work through brainstorming, multi-agent review, and execution readiness in the correct order.
-risk: unknown
+risk: none
 source: community
 date_added: '2026-02-27'
 ---
@@ -91,9 +91,9 @@ Use factors such as:
   → Recommend `multi-agent-brainstorming`
 
 - **High risk**  
-  → REQUIRE `multi-agent-brainstorming`
+  → Require a substantive review; use multi-agent-brainstorming only with explicit delegation authorization, otherwise perform a documented single-agent review
 
-Skipping escalation when required is prohibited.
+Do not silently skip a required substantive review. Review depth is not permission to spawn agents or override the user’s workflow.
 
 ---
 
@@ -166,9 +166,15 @@ Bad systems fail in production.
 This meta-skill exists to enforce the former.
 
 ## When to Use
-This skill is applicable to execute the workflow or actions described in the overview.
+Use when a material feature/system decision needs a design, risk assessment and implementation-readiness review. Respect already approved designs and project-required workflows; routine bounded fixes do not need invented artifacts or mandatory brainstorming.
+
+## Example
+
+**User request:**
+
+> Review this interface with @design-orchestration, identify the highest-impact design problems, and propose an implementation-ready improvement.
 
 ## Limitations
-- Use this skill only when the task clearly matches the scope described above.
+- A routing skill cannot grant execution, publishing, spending or delegation permissions. Interpret Understanding Lock/Decision Log as actual project artifacts or concise evidence, not missing tools to invent or a reason to repeatedly stop authorized work.
 - Do not treat the output as a substitute for environment-specific validation, testing, or expert review.
 - Stop and ask for clarification if required inputs, permissions, safety boundaries, or success criteria are missing.

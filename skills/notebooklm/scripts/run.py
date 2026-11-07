@@ -5,9 +5,18 @@ Ensures all scripts run with the correct virtual environment
 """
 
 import os
+import re
 import sys
 import subprocess
 from pathlib import Path
+
+ALLOWED_SCRIPTS = {
+    "ask_question.py",
+    "notebook_manager.py",
+    "auth_manager.py",
+    "cleanup_manager.py",
+}
+SCRIPT_NAME_RE = re.compile(r"^[A-Za-z0-9_-]+\.py$")
 
 
 def get_venv_python():
@@ -30,7 +39,7 @@ def ensure_venv():
     setup_script = skill_dir / "scripts" / "setup_environment.py"
 
     # Check if venv exists
-    if not venv_dir.exists():
+    if not get_venv_python().is_file():
         print("🔧 First-time setup: Creating virtual environment...")
         print("   This may take a minute...")
 
@@ -52,13 +61,13 @@ def main():
         print("\nAvailable scripts:")
         print("  ask_question.py    - Query NotebookLM")
         print("  notebook_manager.py - Manage notebook library")
-        print("  session_manager.py  - Manage sessions")
         print("  auth_manager.py     - Handle authentication")
         print("  cleanup_manager.py  - Clean up skill data")
         sys.exit(1)
 
     script_name = sys.argv[1]
     script_args = sys.argv[2:]
+    scripts_dir = (Path(__file__).parent.parent / "scripts").resolve()
 
     # Handle both "scripts/script.py" and "script.py" formats
     if script_name.startswith('scripts/'):
@@ -68,10 +77,18 @@ def main():
     # Ensure .py extension
     if not script_name.endswith('.py'):
         script_name += '.py'
+    if not SCRIPT_NAME_RE.match(script_name) or script_name not in ALLOWED_SCRIPTS:
+        print(f"❌ Unsupported script: {script_name}")
+        sys.exit(1)
 
     # Get script path
     skill_dir = Path(__file__).parent.parent
-    script_path = skill_dir / "scripts" / script_name
+    script_path = (scripts_dir / script_name).resolve()
+    try:
+        script_path.relative_to(scripts_dir)
+    except ValueError:
+        print(f"❌ Script path escapes scripts directory: {script_name}")
+        sys.exit(1)
 
     if not script_path.exists():
         print(f"❌ Script not found: {script_name}")
@@ -83,13 +100,9 @@ def main():
     # Ensure venv exists and get Python executable
     venv_python = ensure_venv()
 
-    # Build command
-    cmd = [str(venv_python), str(script_path)] + script_args
-
-    # Run the script
+    # Replace this runner with the selected venv Python process.
     try:
-        result = subprocess.run(cmd)
-        sys.exit(result.returncode)
+        os.execv(str(venv_python), [str(venv_python), str(script_path)] + script_args)
     except KeyboardInterrupt:
         print("\n⚠️ Interrupted by user")
         sys.exit(130)

@@ -1,7 +1,7 @@
 ---
 name: programmatic-seo
 description: Design and evaluate programmatic SEO strategies for creating SEO-driven pages at scale using templates and structured data.
-risk: unknown
+risk: none
 source: community
 date_added: '2026-02-27'
 ---
@@ -41,7 +41,7 @@ The Feasibility Index answers one question:
 ### Total Score: **0–100**
 
 This is a **diagnostic score**, not a vanity metric.
-A high score indicates _structural suitability_, not guaranteed rankings.
+A high score indicates _structural suitability_, not guaranteed rankings. The weights and thresholds are this workflow’s qualitative rubric, not a validated search-engine metric; mark missing demand/competition data as unknown rather than inventing scores.
 
 ---
 
@@ -112,6 +112,17 @@ A high score indicates _structural suitability_, not guaranteed rankings.
 - Scale will not create long-term quality debt
 
 ---
+
+### Scoring Guidance per Category
+
+For each of the six scoring categories, allot points within the category's weight band using these anchors:
+
+- **0–15% of band:** No alignment — the site/topic clearly does not meet the criterion (e.g. fewer than 10 candidate entities for a directory-style PSEO).
+- **16–40% of band:** Partial alignment — the criterion is partially met, OR met for a small subset of pages only.
+- **41–80% of band:** Strong alignment — the criterion holds for most of the planned page set.
+- **81–100% of band:** Exemplary — the criterion holds universally and is reinforced by a structural data source (DB, API, validated CSV).
+
+Sum the per-category scores to compute the Feasibility Index used in §"Feasibility Bands" below.
 
 ### Feasibility Bands (Required)
 
@@ -349,6 +360,12 @@ If triggered, **halt indexing or roll back**:
 
 ## When to Use
 This skill is applicable to execute the workflow or actions described in the overview.
+
+## Example
+
+**User request:**
+
+> Design and evaluate programmatic SEO strategies for creating SEO-driven pages at scale using templates and structured data.
 
 ## Limitations
 - Use this skill only when the task clearly matches the scope described above.

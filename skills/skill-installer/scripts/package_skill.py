@@ -23,17 +23,34 @@ import sys
 import json
 import re
 import zipfile
+import tempfile
 from pathlib import Path
+
+
+def safe_user_path(path_value, base_dir="."):
+    """Resolve a CLI path under the current workspace."""
+    if base_dir != ".":
+        raise ValueError("Custom base directories are not supported for CLI paths")
+    base_path = Path.cwd().resolve()
+    lexical = Path(path_value).expanduser().absolute()
+    if any(part.is_symlink() for part in (lexical, *lexical.parents)):
+        raise ValueError("Symlink paths are not supported")
+    resolved_path = lexical.resolve()
+    try:
+        resolved_path.relative_to(base_path)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes allowed directory: {path_value}") from exc
+    return resolved_path
 
 # ── Configuration ──────────────────────────────────────────────────────────
 
-SKILLS_ROOT = Path(r"C:\Users\renat\skills")
-DEFAULT_OUTPUT = Path(os.path.expanduser("~")) / "Desktop"
+SKILLS_ROOT = (Path.cwd() / "skills").resolve()
+DEFAULT_OUTPUT = Path.cwd() / "dist"
 
 # Directories to exclude from ZIP
 EXCLUDE_DIRS = {
     ".git", "__pycache__", "node_modules", ".venv", "venv",
-    ".tox", ".mypy_cache", ".pytest_cache", "data",
+    ".tox", ".mypy_cache", ".pytest_cache",
 }
 
 # File patterns to exclude
@@ -46,6 +63,23 @@ EXCLUDE_EXTENSIONS = {
     ".pyc", ".pyo", ".db", ".sqlite", ".sqlite3",
     ".log", ".tmp", ".bak",
 }
+SAFE_ARCHIVE_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$")
+
+
+def resolve_existing_dir(path) -> Path:
+    """Resolve a user-provided directory and require it to exist."""
+    resolved = safe_user_path(path).expanduser().resolve()
+    if not resolved.is_dir():
+        raise ValueError(f"Directory not found: {resolved}")
+    return resolved
+
+
+def resolve_output_dir(path) -> Path:
+    """Resolve a user-provided output directory."""
+    resolved = safe_user_path(path).expanduser().resolve()
+    if resolved.exists() and not resolved.is_dir():
+        raise ValueError(f"Output path is not a directory: {resolved}")
+    return resolved
 
 
 # ── YAML Frontmatter Parser ───────────────────────────────────────────────
@@ -63,22 +97,28 @@ def parse_yaml_frontmatter(path: Path) -> dict:
 
     try:
         import yaml
-        return yaml.safe_load(match.group(1)) or {}
+        class UniqueLoader(yaml.SafeLoader):
+            pass
+        def mapping(loader, node):
+            result = {}
+            for key_node, value_node in node.value:
+                key = loader.construct_object(key_node)
+                if key in result:
+                    raise ValueError("Duplicate YAML key")
+                result[key] = loader.construct_object(value_node)
+            return result
+        UniqueLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, mapping)
+        data = yaml.load(match.group(1), Loader=UniqueLoader)
+        if not isinstance(data, dict):
+            return {}
+        if any(not isinstance(data.get(key), str) or not data[key].strip()
+               for key in ("name", "description")):
+            return {}
+        return data
+    except (ImportError, ValueError, TypeError):
+        return {}
     except Exception:
-        result = {}
-        block = match.group(1)
-        for key in ("name", "description", "version"):
-            m = re.search(rf'^{key}:\s*["\']?(.+?)["\']?\s*$', block, re.MULTILINE)
-            if m:
-                result[key] = m.group(1).strip()
-            else:
-                m2 = re.search(
-                    rf'^{key}:\s*>-?\s*\n((?:\s+.+\n?)+)', block, re.MULTILINE
-                )
-                if m2:
-                    lines = m2.group(1).strip().split("\n")
-                    result[key] = " ".join(line.strip() for line in lines)
-        return result
+        return {}
 
 
 # ── Validation ─────────────────────────────────────────────────────────────
@@ -97,6 +137,8 @@ def validate_for_web(skill_dir: Path) -> dict:
 
     # Name: required, lowercase, letters/numbers/hyphens only, max 64 chars
     name = meta.get("name", "")
+    if not isinstance(name, str):
+        name = ""
     if not name:
         errors.append("Missing 'name' field in frontmatter")
     else:
@@ -115,6 +157,8 @@ def validate_for_web(skill_dir: Path) -> dict:
 
     # Description: required, max 1024 chars
     desc = meta.get("description", "")
+    if not isinstance(desc, str):
+        desc = ""
     if not desc:
         errors.append("Missing 'description' field in frontmatter")
     elif len(desc) > 1024:
@@ -131,6 +175,12 @@ def validate_for_web(skill_dir: Path) -> dict:
 
 def should_include(file_path: Path, skill_dir: Path) -> bool:
     """Check if a file should be included in the ZIP."""
+    if file_path.is_symlink():
+        return False
+    try:
+        file_path.resolve(strict=True).relative_to(skill_dir.resolve(strict=True))
+    except (OSError, ValueError):
+        return False
     rel = file_path.relative_to(skill_dir)
 
     # Check directory exclusions
@@ -163,12 +213,16 @@ def package_skill(skill_dir: Path, output_dir: Path = None) -> dict:
               ├── references/
               └── ...
     """
-    skill_dir = Path(skill_dir).resolve()
+    try:
+        skill_dir = resolve_existing_dir(skill_dir)
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
 
-    if not skill_dir.exists():
-        return {"success": False, "error": f"Directory not found: {skill_dir}"}
-
-    # Validate
+    # Local structural/secret checks are advisory, not a security certification.
+    from validate_skill import validate
+    local = validate(skill_dir)
+    if not local["valid"]:
+        return {"success": False, "error": "; ".join(local["errors"])}
     validation = validate_for_web(skill_dir)
     if not validation["valid"]:
         return {
@@ -179,25 +233,27 @@ def package_skill(skill_dir: Path, output_dir: Path = None) -> dict:
 
     skill_name = validation["name"] or skill_dir.name
     skill_name_lower = skill_name.lower()
+    if not SAFE_ARCHIVE_NAME_RE.fullmatch(skill_name_lower):
+        return {"success": False, "error": f"Unsafe archive skill name: {skill_name}"}
 
     # Determine output path
     if output_dir is None:
         output_dir = DEFAULT_OUTPUT
-    output_dir = Path(output_dir).resolve()
+    try:
+        output_dir = resolve_output_dir(output_dir)
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
     output_dir.mkdir(parents=True, exist_ok=True)
 
     zip_path = output_dir / f"{skill_name_lower}.zip"
+    if zip_path.is_symlink():
+        return {"success": False, "error": "Refusing symlink archive destination"}
 
     # Collect files
     files_to_include = []
-    for root, dirs, files in os.walk(skill_dir):
-        # Filter directories in-place to skip excluded ones
-        dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
-
-        for f in files:
-            fp = Path(root) / f
-            if should_include(fp, skill_dir):
-                files_to_include.append(fp)
+    for fp in safe_user_path(skill_dir).rglob("*"):
+        if fp.is_file() and should_include(fp, skill_dir):
+            files_to_include.append(fp)
 
     if not files_to_include:
         return {"success": False, "error": "No files to package"}
@@ -205,17 +261,29 @@ def package_skill(skill_dir: Path, output_dir: Path = None) -> dict:
     # Create ZIP with skill folder as root
     # CRITICAL: ZIP paths MUST use forward slashes, not Windows backslashes
     try:
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            for fp in sorted(files_to_include):
-                rel_path = fp.relative_to(skill_dir)
-                # Convert Windows backslash to forward slash for ZIP compatibility
-                rel_posix = rel_path.as_posix()
-                archive_path = f"{skill_name_lower}/{rel_posix}"
-                zf.write(fp, archive_path)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_zip_path = Path(temp_dir) / "skill.zip"
+            with zipfile.ZipFile(temp_zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                for fp in sorted(files_to_include):
+                    rel_path = fp.relative_to(skill_dir)
+                    # Convert Windows backslash to forward slash for ZIP compatibility
+                    rel_posix = rel_path.as_posix()
+                    archive_path = f"{skill_name_lower}/{rel_posix}"
+                    zf.write(fp, archive_path)
+            # Write within destination filesystem then atomically replace a regular archive.
+            with tempfile.NamedTemporaryFile(dir=output_dir, suffix=".zip", delete=False) as handle:
+                staged_zip = Path(handle.name)
+                handle.write(temp_zip_path.read_bytes())
+            try:
+                os.replace(staged_zip, zip_path)
+            finally:
+                staged_zip.unlink(missing_ok=True)
 
         # Verify ZIP is not empty and valid
         with zipfile.ZipFile(zip_path, "r") as zf_check:
             entries = zf_check.namelist()
+            if zf_check.testzip() is not None:
+                raise ValueError("ZIP CRC integrity check failed")
             if not entries:
                 zip_path.unlink(missing_ok=True)
                 return {"success": False, "error": "ZIP was created empty (no files written)"}
@@ -332,8 +400,15 @@ def verify_zips(output_dir: Path = None) -> dict:
                 if bad_paths:
                     entry["issues"].append(f"Contains backslash paths: {bad_paths[:3]}")
 
-                # Check for SKILL.md
-                has_skill_md = any(e.endswith("SKILL.md") for e in entries)
+                from pathlib import PurePosixPath
+                unsafe = [e for e in entries if PurePosixPath(e).is_absolute() or ".." in PurePosixPath(e).parts or ":" in e or "\\" in e]
+                if unsafe:
+                    entry["issues"].append("Unsafe archive paths")
+                roots = {PurePosixPath(e).parts[0] for e in entries if PurePosixPath(e).parts}
+                if roots != {zip_path.stem}:
+                    entry["issues"].append("Archive must have exactly one root matching its filename")
+                # Exact root entry, not an arbitrary filename suffix.
+                has_skill_md = f"{zip_path.stem}/SKILL.md" in entries
                 if not has_skill_md:
                     entry["issues"].append("Missing SKILL.md")
 
@@ -382,10 +457,10 @@ def main():
     if "--output" in args:
         idx = args.index("--output")
         if idx + 1 < len(args):
-            output_dir = Path(args[idx + 1])
+            output_dir = resolve_output_dir(args[idx + 1])
 
     if do_verify:
-        result = verify_zips(Path(output_dir) if output_dir else None)
+        result = verify_zips(output_dir if output_dir else None)
         print(json.dumps(result, indent=2, ensure_ascii=False))
         sys.exit(0 if result["invalid"] == 0 else 1)
 
@@ -404,7 +479,7 @@ def main():
         sys.exit(1)
 
     if source:
-        result = package_skill(Path(source), output_dir)
+        result = package_skill(source, output_dir)
         print(json.dumps(result, indent=2, ensure_ascii=False))
         sys.exit(0 if result["success"] else 1)
     elif do_all:

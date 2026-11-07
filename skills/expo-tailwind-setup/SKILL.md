@@ -1,20 +1,22 @@
 ---
 name: expo-tailwind-setup
 description: Set up Tailwind CSS v4 in Expo with react-native-css and NativeWind v5 for universal styling
-risk: unknown
-source: community
-version: 1.0.0
+risk: critical
+source: https://github.com/expo/skills/tree/main/plugins/expo/skills/expo-tailwind-setup
+source_repo: expo/skills
+source_type: official
+date_added: 2026-07-01
 license: MIT
+license_source: https://github.com/expo/skills/blob/main/LICENSE
 ---
 
 # Tailwind CSS Setup for Expo with react-native-css
+## When to Use
+
+Use this skill when you need set up Tailwind CSS v4 in Expo with react-native-css and NativeWind v5 for universal styling.
+
 
 This guide covers setting up Tailwind CSS v4 in Expo using react-native-css and NativeWind v5 for universal styling across iOS, Android, and Web.
-
-## When to Use
-- You need to set up Tailwind CSS v4 styling in an Expo app using `react-native-css` and NativeWind v5.
-- The task involves configuring Metro, PostCSS, global CSS, or package versions for Expo + Tailwind.
-- You want one styling setup that works across iOS, Android, and web in an Expo project.
 
 ## Overview
 
@@ -24,6 +26,8 @@ This setup uses:
 - **react-native-css** - CSS runtime for React Native
 - **NativeWind v5** - Metro transformer for Tailwind in React Native
 - **@tailwindcss/postcss** - PostCSS plugin for Tailwind v4
+
+This is a historical NativeWind 5 preview/nightly recipe. Verify the current Expo SDK/React/NativeWind compatibility and pinned dependency APIs before changing an existing app. Merge Metro/Babel/PostCSS settings without discarding unrelated plugins. Package-manager resolutions differ; do not assume Yarn resolutions affect npm. Validate native and web builds plus accessibility/reduced-motion behavior.
 
 ## Installation
 
@@ -131,6 +135,8 @@ With Tailwind v4 and NativeWind v5, you do NOT need a babel.config.js for Tailwi
 ## CSS Component Wrappers
 
 Since react-native-css requires explicit CSS element wrapping, create reusable components:
+
+Import src/global.css once in the actual app entry/root layout. Add `export { Image } from "./image";` to src/tw/index.tsx if using the barrel import shown below.
 
 ### Main Components (`src/tw/index.tsx`)
 
@@ -382,7 +388,7 @@ Create a CSS file for Apple semantic colors:
 /* src/css/sf.css */
 @layer base {
   html {
-    color-scheme: light;
+    color-scheme: light dark;
   }
 }
 
@@ -487,6 +493,7 @@ type Props = React.ComponentProps<typeof RNView> & { className?: string };
 ```
 
 ## Limitations
-- Use this skill only when the task clearly matches the scope described above.
-- Do not treat the output as a substitute for environment-specific validation, testing, or expert review.
-- Stop and ask for clarification if required inputs, permissions, safety boundaries, or success criteria are missing.
+
+- Use this skill only when the task clearly matches its upstream product or API scope.
+- Verify commands, API behavior, pricing, quotas, credentials, and deployment effects against current official documentation before making changes.
+- Do not treat generated examples as a substitute for environment-specific tests, security review, or user approval for destructive or costly actions.

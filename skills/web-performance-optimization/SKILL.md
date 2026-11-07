@@ -1,75 +1,29 @@
 ---
 name: web-performance-optimization
 description: "Optimize website and web application performance including loading speed, Core Web Vitals, bundle size, caching strategies, and runtime performance"
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
 
 # Web Performance Optimization
 
-## Overview
+## Detailed Guide
 
-Help developers optimize website and web application performance to improve user experience, SEO rankings, and conversion rates. This skill provides systematic approaches to measure, analyze, and improve loading speed, runtime performance, and Core Web Vitals metrics.
+Read [the detailed guide](references/detailed-guide.md) before executing this skill. It retains the complete procedure and reference material. Treat its safety, prerequisites, and validation requirements as mandatory. For focused work, load the relevant sections; for end-to-end work, read the guide completely.
 
 ## When to Use This Skill
 
 - Use when website or app is loading slowly
-- Use when optimizing for Core Web Vitals (LCP, FID, CLS)
+- Use when optimizing for Core Web Vitals (LCP, INP, CLS)
 - Use when reducing JavaScript bundle size
-- Use when improving Time to Interactive (TTI)
+- Use when reducing main-thread blocking and slow interactions (INP)
 - Use when optimizing images and assets
 - Use when implementing caching strategies
 - Use when debugging performance bottlenecks
 - Use when preparing for performance audits
 
-## How It Works
-
-### Step 1: Measure Current Performance
-
-I'll help you establish baseline metrics:
-- Run Lighthouse audits
-- Measure Core Web Vitals (LCP, FID, CLS)
-- Check bundle sizes
-- Analyze network waterfall
-- Identify performance bottlenecks
-
-### Step 2: Identify Issues
-
-Analyze performance problems:
-- Large JavaScript bundles
-- Unoptimized images
-- Render-blocking resources
-- Slow server response times
-- Missing caching headers
-- Layout shifts
-- Long tasks blocking main thread
-
-### Step 3: Prioritize Optimizations
-
-Focus on high-impact improvements:
-- Critical rendering path optimization
-- Code splitting and lazy loading
-- Image optimization
-- Caching strategies
-- Third-party script optimization
-
-### Step 4: Implement Optimizations
-
-Apply performance improvements:
-- Optimize assets (images, fonts, CSS, JS)
-- Implement code splitting
-- Add caching headers
-- Lazy load non-critical resources
-- Optimize critical rendering path
-
-### Step 5: Verify Improvements
-
-Measure impact of changes:
-- Re-run Lighthouse audits
-- Compare before/after metrics
-- Monitor real user metrics (RUM)
-- Test on different devices and networks
+Examples below are hypothetical teaching scenarios, not measured results or guaranteed savings. Measure comparable builds/devices/networks and field distributions; do not infer INP from bundle bytes alone. Pin project-compatible tools before installs; preserve originals and review dependency/API changes.
 
 ## Examples
 
@@ -80,14 +34,14 @@ Measure impact of changes:
 
 ### Current Metrics (Before Optimization)
 - **LCP (Largest Contentful Paint):** 4.2s ❌ (should be < 2.5s)
-- **FID (First Input Delay):** 180ms ❌ (should be < 100ms)
+- **INP (Interaction to Next Paint):** 350ms ❌ (should be ≤ 200ms)
 - **CLS (Cumulative Layout Shift):** 0.25 ❌ (should be < 0.1)
 - **Lighthouse Score:** 62/100
 
 ### Issues Identified
 
 1. **LCP Issue:** Hero image (2.5MB) loads slowly
-2. **FID Issue:** Large JavaScript bundle (850KB) blocks main thread
+2. **INP Issue:** Large JavaScript bundle (850KB) blocks main thread
 3. **CLS Issue:** Images without dimensions cause layout shifts
 
 ### Optimization Plan
@@ -121,7 +75,7 @@ Measure impact of changes:
 - Use CDN for faster delivery
 - Preload hero image: `<link rel="preload" as="image" href="/hero.avif">`
 
-#### Fix FID (First Input Delay)
+#### Fix INP (Interaction to Next Paint)
 
 **Problem:** 850KB JavaScript bundle blocks main thread
 
@@ -205,7 +159,7 @@ npm install date-fns
 ### Results After Optimization
 
 - **LCP:** 1.8s ✅ (improved by 57%)
-- **FID:** 45ms ✅ (improved by 75%)
+- **INP:** 150ms ✅ (improved by 57%)
 - **CLS:** 0.05 ✅ (improved by 80%)
 - **Lighthouse Score:** 94/100 ✅
 ```
@@ -295,18 +249,18 @@ const AdminPanel = dynamic(() => import('./AdminPanel'), {
 #### 4. Remove Dead Code
 
 \`\`\`javascript
-// Enable tree shaking in webpack.config.js
+// Tree shaking in webpack.config.js: production mode already enables
+// optimization.usedExports and optimization.sideEffects.
+// Do not set optimization.sideEffects to false: that turns the optimization off.
 module.exports = {
-  mode: 'production',
-  optimization: {
-    usedExports: true,
-    sideEffects: false
-  }
+  mode: 'production'
 };
 
-// In package.json
+// In package.json: mark modules as side-effect-free, but list the files
+// that must run when imported (CSS, polyfills). A blanket
+// "sideEffects": false lets the bundler drop `import './styles.css'`.
 {
-  "sideEffects": false
+  "sideEffects": ["*.css", "*.scss", "./src/polyfills.js"]
 }
 \`\`\`
 
@@ -314,13 +268,13 @@ module.exports = {
 
 \`\`\`html
 <!-- Before: Loads immediately -->
-<script src="https://analytics.com/script.js"></script>
+<script src="https://analytics.example/script.js"></script>
 
 <!-- After: Load after page interactive -->
 <script>
   window.addEventListener('load', () => {
     const script = document.createElement('script');
-    script.src = 'https://analytics.com/script.js';
+    script.src = 'https://analytics.example/script.js';
     script.async = true;
     document.body.appendChild(script);
   });
@@ -379,10 +333,16 @@ async function optimizeImage(inputPath, outputDir) {
 }
 
 // Process all images
-const images = fs.readdirSync('./images');
-images.forEach(img => {
-  optimizeImage(\`./images/\${img}\`, './images/optimized');
-});
+fs.mkdirSync('./images/optimized', { recursive: true });
+async function main() {
+  const images = fs.readdirSync('./images', { withFileTypes: true });
+  for (const entry of images) {
+    if (entry.isFile() && /\.(png|jpe?g|webp)$/i.test(entry.name)) {
+      await optimizeImage(path.join('./images', entry.name), './images/optimized');
+    }
+  }
+}
+main().catch(error => { console.error(error.message); process.exitCode = 1; });
 \`\`\`
 
 #### 2. Implement Responsive Images
@@ -424,7 +384,7 @@ images.forEach(img => {
     alt="Hero image"
     width="1200"
     height="600"
-    loading="lazy"
+    fetchpriority="high"
   >
 </picture>
 \`\`\`
@@ -483,170 +443,6 @@ import Image from 'next/image';
 | LCP | 4.5s | 1.6s | 64% faster |
 | Page Load (3G) | 18s | 4.2s | 77% faster |
 ```
-
-## Best Practices
-
-### ✅ Do This
-
-- **Measure First** - Always establish baseline metrics before optimizing
-- **Use Lighthouse** - Run audits regularly to track progress
-- **Optimize Images** - Use modern formats (WebP, AVIF) and responsive images
-- **Code Split** - Break large bundles into smaller chunks
-- **Lazy Load** - Defer non-critical resources
-- **Cache Aggressively** - Set proper cache headers for static assets
-- **Minimize Main Thread Work** - Keep JavaScript execution under 50ms chunks
-- **Preload Critical Resources** - Use `<link rel="preload">` for critical assets
-- **Use CDN** - Serve static assets from CDN for faster delivery
-- **Monitor Real Users** - Track Core Web Vitals from real users
-
-### ❌ Don't Do This
-
-- **Don't Optimize Blindly** - Measure first, then optimize
-- **Don't Ignore Mobile** - Test on real mobile devices and slow networks
-- **Don't Block Rendering** - Avoid render-blocking CSS and JavaScript
-- **Don't Load Everything Upfront** - Lazy load non-critical resources
-- **Don't Forget Dimensions** - Always specify image width/height
-- **Don't Use Synchronous Scripts** - Use async or defer attributes
-- **Don't Ignore Third-Party Scripts** - They often cause performance issues
-- **Don't Skip Compression** - Always compress and minify assets
-
-## Common Pitfalls
-
-### Problem: Optimized for Desktop but Slow on Mobile
-**Symptoms:** Good Lighthouse score on desktop, poor on mobile
-**Solution:**
-- Test on real mobile devices
-- Use Chrome DevTools mobile throttling
-- Optimize for 3G/4G networks
-- Reduce JavaScript execution time
-```bash
-# Test with throttling
-lighthouse https://yoursite.com --throttling.cpuSlowdownMultiplier=4
-```
-
-### Problem: Large JavaScript Bundle
-**Symptoms:** Long Time to Interactive (TTI), high FID
-**Solution:**
-- Analyze bundle with webpack-bundle-analyzer
-- Remove unused dependencies
-- Implement code splitting
-- Lazy load non-critical code
-```bash
-# Analyze bundle
-npx webpack-bundle-analyzer dist/stats.json
-```
-
-### Problem: Images Causing Layout Shifts
-**Symptoms:** High CLS score, content jumping
-**Solution:**
-- Always specify width and height
-- Use aspect-ratio CSS property
-- Reserve space with skeleton loaders
-```css
-img {
-  aspect-ratio: 16 / 9;
-  width: 100%;
-  height: auto;
-}
-```
-
-### Problem: Slow Server Response Time
-**Symptoms:** High TTFB (Time to First Byte)
-**Solution:**
-- Implement server-side caching
-- Use CDN for static assets
-- Optimize database queries
-- Consider static site generation (SSG)
-```javascript
-// Next.js: Static generation
-export async function getStaticProps() {
-  const data = await fetchData();
-  return {
-    props: { data },
-    revalidate: 60 // Regenerate every 60 seconds
-  };
-}
-```
-
-## Performance Checklist
-
-### Images
-- [ ] Convert to modern formats (WebP, AVIF)
-- [ ] Implement responsive images
-- [ ] Add lazy loading
-- [ ] Specify dimensions (width/height)
-- [ ] Compress images (< 200KB each)
-- [ ] Use CDN for delivery
-
-### JavaScript
-- [ ] Bundle size < 200KB (gzipped)
-- [ ] Implement code splitting
-- [ ] Lazy load non-critical code
-- [ ] Remove unused dependencies
-- [ ] Minify and compress
-- [ ] Use async/defer for scripts
-
-### CSS
-- [ ] Inline critical CSS
-- [ ] Defer non-critical CSS
-- [ ] Remove unused CSS
-- [ ] Minify CSS files
-- [ ] Use CSS containment
-
-### Caching
-- [ ] Set cache headers for static assets
-- [ ] Implement service worker
-- [ ] Use CDN caching
-- [ ] Cache API responses
-- [ ] Version static assets
-
-### Core Web Vitals
-- [ ] LCP < 2.5s
-- [ ] FID < 100ms
-- [ ] CLS < 0.1
-- [ ] TTFB < 600ms
-- [ ] TTI < 3.8s
-
-## Performance Tools
-
-### Measurement Tools
-- **Lighthouse** - Comprehensive performance audit
-- **WebPageTest** - Detailed waterfall analysis
-- **Chrome DevTools** - Performance profiling
-- **PageSpeed Insights** - Real user metrics
-- **Web Vitals Extension** - Monitor Core Web Vitals
-
-### Analysis Tools
-- **webpack-bundle-analyzer** - Visualize bundle composition
-- **source-map-explorer** - Analyze bundle size
-- **Bundlephobia** - Check package sizes before installing
-- **ImageOptim** - Image compression tool
-
-### Monitoring Tools
-- **Google Analytics** - Track Core Web Vitals
-- **Sentry** - Performance monitoring
-- **New Relic** - Application performance monitoring
-- **Datadog** - Real user monitoring
-
-## Related Skills
-
-- `@react-best-practices` - React performance patterns
-- `@frontend-dev-guidelines` - Frontend development standards
-- `@systematic-debugging` - Debug performance issues
-- `@senior-architect` - Architecture for performance
-
-## Additional Resources
-
-- [Web.dev Performance](https://web.dev/performance/)
-- [Core Web Vitals](https://web.dev/vitals/)
-- [Lighthouse Documentation](https://developers.google.com/web/tools/lighthouse)
-- [MDN Performance Guide](https://developer.mozilla.org/en-US/docs/Web/Performance)
-- [Next.js Performance](https://nextjs.org/docs/advanced-features/measuring-performance)
-- [Image Optimization Guide](https://web.dev/fast/#optimize-your-images)
-
----
-
-**Pro Tip:** Focus on Core Web Vitals (LCP, FID, CLS) first - they have the biggest impact on user experience and SEO rankings!
 
 ## Limitations
 - Use this skill only when the task clearly matches the scope described above.

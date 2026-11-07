@@ -2,7 +2,7 @@
 name: blueprint
 description: "Turn a one-line objective into a step-by-step construction plan any coding agent can execute cold. Each step has a self-contained context brief — a fresh agent in a new session can pick up any step without reading prior steps."
 category: planning
-risk: safe
+risk: critical
 source: community
 date_added: "2026-03-10"
 ---
@@ -25,10 +25,10 @@ Blueprint is for multi-session, multi-agent engineering projects where each step
 ## How It Works
 
 1. **Research** — Scans the codebase, reads project memory, runs pre-flight checks
-2. **Design** — Breaks the objective into one-PR-sized steps, identifies parallelism, assigns model tiers
+2. **Design** — Breaks the objective into one-PR-sized steps, identifies parallelism, records the user’s selected model constraints
 3. **Draft** — Generates the plan from a structured template with branch workflow rules, CI policy, and rollback strategies inline
-4. **Review** — Delegates adversarial review to a strongest-model sub-agent (falls back to default model if unavailable)
-5. **Register** — Saves the plan and updates project memory
+4. **Review** — Reviews the plan against acceptance criteria; delegate only when the user or applicable instructions explicitly authorize sub-agents, and use their model constraints
+5. **Register** — Saves the plan/task ledger in an authorized project location; global memory updates require an explicit request
 
 ## Examples
 
@@ -52,16 +52,27 @@ Blueprint is for multi-session, multi-agent engineering projects where each step
 ## Key Differentiators
 
 - **Cold-start execution**: Every step has a self-contained context brief
-- **Adversarial review gate**: Strongest-model review before execution
-- **Zero runtime risk**: Pure markdown — no hooks, no scripts, no executable code
+- **Adversarial review gate**: Evidence-based review before execution, with optional authorized delegation
+- **Markdown-first distribution**: The reviewed revision is primarily instructions and templates, but installing or following it can still cause an agent to run commands. Treat the repository as untrusted until inspected.
 - **Plan mutation protocol**: Steps can be split, inserted, skipped with audit trail
 
 ## Installation
 
+Do not clone a moving branch directly into an active skills directory. Inspect the named immutable revision in a separate review directory using the existing task/network authorization. Host activation or installation still needs the applicable explicit instruction; do not ask again if it was already granted:
+
 ```bash
-mkdir -p ~/.claude/skills
-git clone https://github.com/antbotlab/blueprint.git ~/.claude/skills/blueprint
+review_dir="$(mktemp -d)"
+git clone --filter=blob:none https://github.com/antbotlab/blueprint.git "$review_dir/blueprint"
+git -C "$review_dir/blueprint" checkout --detach 07c5b305cf2d95d584a0d0398c390e839fec5954
+git -C "$review_dir/blueprint" ls-files
+git -C "$review_dir/blueprint" status --short
 ```
+
+Read `SKILL.md` and every bundled file at that exact commit. Check for scripts,
+hooks, symlinks, network calls, credential access, and instructions that request
+commands or elevated permissions. Only within explicit user approval for host installation, copy the
+reviewed files into the selected host's skills directory. Re-review a newer
+revision instead of silently updating this pin.
 
 ## Additional Resources
 
@@ -73,3 +84,4 @@ git clone https://github.com/antbotlab/blueprint.git ~/.claude/skills/blueprint
 - Use this skill only when the task clearly matches the scope described above.
 - Do not treat the output as a substitute for environment-specific validation, testing, or expert review.
 - Stop and ask for clarification if required inputs, permissions, safety boundaries, or success criteria are missing.
+- A pinned revision is reproducible, not automatically trustworthy; its contents still require review.

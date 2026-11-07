@@ -1,7 +1,7 @@
 ---
 name: kpi-dashboard-design
 description: "Comprehensive patterns for designing effective Key Performance Indicator (KPI) dashboards that drive business decisions."
-risk: unknown
+risk: critical
 source: community
 date_added: "2026-02-27"
 ---
@@ -249,73 +249,20 @@ Efficiency:
 
 ## Implementation Patterns
 
+Define reporting timezone, currency/conversion date, numerator/denominator and
+comparison period for each card. Do not mix percent changes with percentage points
+or NPS points. ARR = 12 × MRR implies equal growth rates when using the same
+period and definition. These synthetic layout figures are not reconciled accounts.
+Require access controls, aggregation/minimum cohort sizes and freshness/coverage
+labels before showing customer/employee or financial data; avoid exporting raw PII.
+Email opens/clicks can include privacy proxies/bots and are not direct engagement proof.
+
 ### SQL for KPI Calculations
 
-```sql
--- Monthly Recurring Revenue (MRR)
-WITH mrr_calculation AS (
-    SELECT
-        DATE_TRUNC('month', billing_date) AS month,
-        SUM(
-            CASE subscription_interval
-                WHEN 'monthly' THEN amount
-                WHEN 'yearly' THEN amount / 12
-                WHEN 'quarterly' THEN amount / 3
-            END
-        ) AS mrr
-    FROM subscriptions
-    WHERE status = 'active'
-    GROUP BY DATE_TRUNC('month', billing_date)
-)
-SELECT
-    month,
-    mrr,
-    LAG(mrr) OVER (ORDER BY month) AS prev_mrr,
-    (mrr - LAG(mrr) OVER (ORDER BY month)) / LAG(mrr) OVER (ORDER BY month) * 100 AS growth_pct
-FROM mrr_calculation;
+Use `resources/metric-queries.sql` for executable normalized-input examples. `users` contains one row per customer, `events` contains user/month observations, `spend` contains source spend rows, and `monthly_revenue` contains one reconciled amount per month. Represent months as an integer year × 12 + month − 1 so offsets do not wrap after December.
 
--- Cohort Retention
-WITH cohorts AS (
-    SELECT
-        user_id,
-        DATE_TRUNC('month', created_at) AS cohort_month
-    FROM users
-),
-activity AS (
-    SELECT
-        user_id,
-        DATE_TRUNC('month', event_date) AS activity_month
-    FROM user_events
-    WHERE event_type = 'active_session'
-)
-SELECT
-    c.cohort_month,
-    EXTRACT(MONTH FROM age(a.activity_month, c.cohort_month)) AS months_since_signup,
-    COUNT(DISTINCT a.user_id) AS active_users,
-    COUNT(DISTINCT a.user_id)::FLOAT / COUNT(DISTINCT c.user_id) * 100 AS retention_rate
-FROM cohorts c
-LEFT JOIN activity a ON c.user_id = a.user_id
-    AND a.activity_month >= c.cohort_month
-GROUP BY c.cohort_month, EXTRACT(MONTH FROM age(a.activity_month, c.cohort_month))
-ORDER BY c.cohort_month, months_since_signup;
+The queries keep the original cohort denominator, deduplicate activity before counting, aggregate spend before joining customers, and return NULL for undefined growth or acquisition cost. Missing cohort/month combinations need an explicit reporting calendar if zero-activity rows must be displayed. The growth query compares consecutive available rows; require a complete monthly calendar or label gaps as unavailable rather than calling a multi-month change monthly growth. Match spend and acquired-customer channel/time cohorts before interpreting CAC. Normalize subscription intervals, currency, refunds and revenue recognition before producing monthly revenue; these examples do not define accounting policy.
 
--- Customer Acquisition Cost (CAC)
-SELECT
-    DATE_TRUNC('month', acquired_date) AS month,
-    SUM(marketing_spend) / NULLIF(COUNT(new_customers), 0) AS cac,
-    SUM(marketing_spend) AS total_spend,
-    COUNT(new_customers) AS customers_acquired
-FROM (
-    SELECT
-        DATE_TRUNC('month', u.created_at) AS acquired_date,
-        u.id AS new_customers,
-        m.spend AS marketing_spend
-    FROM users u
-    JOIN marketing_spend m ON DATE_TRUNC('month', u.created_at) = m.month
-    WHERE u.source = 'marketing'
-) acquisition
-GROUP BY DATE_TRUNC('month', acquired_date);
-```
 
 ### Python Dashboard Code (Streamlit)
 
@@ -327,7 +274,8 @@ import plotly.graph_objects as go
 
 st.set_page_config(page_title="KPI Dashboard", layout="wide")
 
-# Header with date filter
+# Synthetic layout illustration; this is not a connected or filterable dashboard.
+# Header with illustrative date selector
 col1, col2 = st.columns([3, 1])
 with col1:
     st.title("Executive Dashboard")
@@ -338,13 +286,12 @@ with col2:
     )
 
 # KPI Cards
-def metric_card(label, value, delta, prefix="", suffix=""):
-    delta_color = "green" if delta >= 0 else "red"
-    delta_arrow = "▲" if delta >= 0 else "▼"
+def metric_card(label, value, delta, prefix="", suffix="", delta_unit="%", lower_is_better=False):
     st.metric(
         label=label,
-        value=f"{prefix}{value:,.0f}{suffix}",
-        delta=f"{delta_arrow} {abs(delta):.1f}%"
+        value=f"{prefix}{value:,.1f}{suffix}",
+        delta=f"{delta:+.1f}{delta_unit}",
+        delta_color="inverse" if lower_is_better else "normal",
     )
 
 col1, col2, col3, col4 = st.columns(4)
@@ -353,9 +300,9 @@ with col1:
 with col2:
     metric_card("Customers", 12450, 15.2)
 with col3:
-    metric_card("NPS Score", 72, 5.0)
+    metric_card("NPS Score", 72, 5.0, delta_unit=" pts")
 with col4:
-    metric_card("Churn Rate", 4.2, -0.8, suffix="%")
+    metric_card("Churn Rate", 4.2, -0.8, suffix="%", delta_unit=" pp", lower_is_better=True)
 
 # Charts
 col1, col2 = st.columns(2)
@@ -363,7 +310,7 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("Revenue Trend")
     revenue_data = pd.DataFrame({
-        'Month': pd.date_range('2024-01-01', periods=12, freq='M'),
+        'Month': pd.date_range('2024-01-01', periods=12, freq='ME'),
         'Revenue': [180000, 195000, 210000, 225000, 240000, 255000,
                     270000, 285000, 300000, 315000, 330000, 345000]
     })
@@ -408,7 +355,7 @@ st.plotly_chart(fig, use_container_width=True)
 # Alerts Section
 st.subheader("Alerts")
 alerts = [
-    {"level": "error", "message": "Churn rate exceeded threshold (>5%)"},
+    {"level": "error", "message": "Illustrative alert: no live threshold evaluation connected"},
     {"level": "warning", "message": "Support ticket volume 20% above average"},
 ]
 for alert in alerts:

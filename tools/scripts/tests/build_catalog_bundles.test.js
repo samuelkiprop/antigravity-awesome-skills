@@ -11,6 +11,33 @@ buildCatalog();
 
 const bundleData = JSON.parse(fs.readFileSync(bundlesPath, "utf8"));
 const bundles = bundleData.bundles || {};
+const catalog = JSON.parse(
+  fs.readFileSync(path.join(repoRoot, "data", "catalog.json"), "utf8"),
+);
+const canonicalIndex = JSON.parse(
+  fs.readFileSync(path.join(repoRoot, "skills_index.json"), "utf8"),
+);
+const skillsById = new Map(catalog.skills.map((skill) => [skill.id, skill]));
+
+assert.strictEqual(
+  skillsById.get("before-you-build").category,
+  "product",
+  "catalog categories must match the canonical skills index",
+);
+assert.ok(
+  !bundles["security-core"].skills.includes("before-you-build"),
+  "explicit product frontmatter should keep product-risk skills out of the security bundle",
+);
+
+for (const canonicalSkill of canonicalIndex) {
+  const catalogSkill = catalog.skills.find(
+    (skill) => skill.path === `${canonicalSkill.path}/SKILL.md`,
+  );
+  assert.ok(catalogSkill, `catalog must contain ${canonicalSkill.path}`);
+  assert.strictEqual(catalogSkill.category, canonicalSkill.category);
+  assert.strictEqual(catalogSkill.risk, canonicalSkill.risk);
+  assert.strictEqual(catalogSkill.source, canonicalSkill.source);
+}
 
 for (const bundleId of [
   "core-dev",
@@ -54,6 +81,11 @@ assert.ok(
   "seo-fundamentals should be included in seo-core",
 );
 assert.ok(
-  bundles["docs-core"].skills.includes("docx-official"),
-  "docx-official should be included in docs-core",
+  bundles["docs-core"].skills.includes("office-productivity"),
+  "office-productivity should be included in docs-core",
 );
+
+for (const removed of ["docx-official", "pptx-official"]) {
+  assert.ok(!skillsById.has(removed), `${removed} must stay absent after restrictive-license removal`);
+  assert.ok(!bundles["docs-core"].skills.includes(removed));
+}
